@@ -1,4 +1,4 @@
-# Data Generation and Evaluation Tools
+# Data Generation, Processing, and Evaluation Tools
 This document describes the steps to training data curation and evaluation scripts for Sky-T1. 
 
 ## Requirements 
@@ -104,3 +104,23 @@ python eval.py --model Qwen/QwQ-32B-Preview --evals=AIME,MATH500,GPQADiamond --t
 ```
     
 Example result: `{"AIME": <aime_accuracy>, "MATH500": <math500_accuracy>, "GPQADiamond": <gpqa_diamond_accuracy>}` 
+
+## Response Rewriting
+The file `response_rewrite.py` provides a pipeline for filtering and rewriting responses generated with `inference_and_check.py`. We use `response_rewrite.py` to create preference pairs for preference optimization (e.g., DPO, SimPO), however, the logic can be edited for alternative filtering and rewriting steps. Details of the implemented logic can be found in `response_rewrite.py` or at this blog post.
+
+To use our preference optimization pipeline, first generate and score multiple responses using `inference_and_check.py`. For example:
+
+```shell
+python inference_and_check.py --inference --dataset MATH500 --model Qwen/Qwen2-7B-Instruct --tp 4 --max_tokens 4096 --split test --result-dir ./ --temperatures 0.7 --n 8
+python inference_and_check.py --check --dataset MATH500 --model Qwen/Qwen2-7B-Instruct --tp 4 --max_tokens 4096 --split test --result-dir ./ --temperatures 0.7 --n 8
+```
+
+Then, use `response_rewrite.py` to process the responses into preference pairs:
+
+```shell
+python response_rewrite.py --rewrite-model meta-llama/Meta-Llama-3-8B-Instruct --target-model NovaSky-AI/Sky-T1-32B-Preview --dataset [PATH_TO_GENERATED_RESPONSES] --result-dir ./ --checkpoint --tp 8
+```
+
+The `checkpoint` argument can optionally be used to save intermediate files of the processed data between steps, in case of failure. 
+
+The resulting `.json` files can be used to train a model with preference optimization algorithms. See the `/train/` directory for more details. 
