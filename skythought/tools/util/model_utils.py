@@ -75,7 +75,7 @@ SUBPROBLEM_SPLIT_PROMPT = """
   Do NOT summarize portions of the reasoning sequence with '...'.
 
   Please keep the sequence that starts with '<|begin_of_solution|>' and ends with '<|end_of_solution|>' as 
-  one single sequence with no '#####' 'inside of the sequence. Add the separator '#####' immediately before '<|begin_of_solution|>.
+  one single sequence with no '#####' inside of the sequence. Add the separator '#####' immediately before '<|begin_of_solution|>'.
 
   Importantly, only use '#####' if a line of thought presents an answer. 
   If the line of thought does not include an answer, it cannot be considered a separate line of thought, and should not be separated.
