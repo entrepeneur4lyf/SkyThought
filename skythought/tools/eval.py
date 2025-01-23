@@ -9,7 +9,11 @@ eval_to_split = {
   "AIME": "train", 
   "GPQADiamond": "train", 
   "MMLU": "test",
-  "LiveCodeBench": "test"
+  "MMLUPro": "test",
+  "LiveCodeBench": "test",
+  "GSM8K": "test",
+  "ARC-C": "test",
+  "AMC23": "train",
 }
 
 def parse_arguments():

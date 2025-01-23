@@ -4,6 +4,7 @@ SYSTEM_PROMPT = {
     "Qwen/Qwen2.5-72B-Instruct": "You are a helpful and harmless assistant. You are Qwen developed by Alibaba. You should think step-by-step.",
     "Qwen/Qwen2.5-32B-Instruct": "You are a helpful and harmless assistant. You are Qwen developed by Alibaba. You should think step-by-step.",
     "Qwen/Qwen2.5-7B-Instruct": "You are a helpful and harmless assistant. You are Qwen developed by Alibaba. You should think step-by-step.",
+    "Qwen/Qwen2.5-1.5B-Instruct": "You are a helpful and harmless assistant. You are Qwen developed by Alibaba. You should think step-by-step.",
     "Qwen/Qwen2.5-Math-7B-Instruct": "You are a helpful and harmless assistant. You are Qwen developed by Alibaba. You should think step-by-step.",
     "PRIME-RL/Eurus-2-7B-PRIME": """When tackling complex reasoning tasks, you have access to the following actions. Use them as needed to progress through your thought process. After each action, determine and state the next most appropriate action to take.
 
@@ -58,6 +59,7 @@ MODEL_TO_NAME = {
     "Qwen/Qwen2.5-72B-Instruct": "Qwen2.5-72B-Instruct",
     "Qwen/Qwen2.5-32B-Instruct": "Qwen2.5-32B-Instruct",
     "Qwen/Qwen2.5-7B-Instruct": "Qwen2.5-7B-Instruct",
+    "Qwen/Qwen2.5-1.5B-Instruct": "Qwen2.5-1.5B-Instruct",
     "Qwen/Qwen2.5-Math-7B-Instruct": "Qwen2.5-Math-7B-Instruct",
     "PRIME-RL/Eurus-2-7B-PRIME": "Eurus-2-7B-PRIME",
     "NovaSky-AI/Sky-T1-32B-Preview": "Sky-T1-32B-Preview",
