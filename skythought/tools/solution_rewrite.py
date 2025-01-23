@@ -1,6 +1,7 @@
 import argparse
 import json
 import os
+import random
 from tqdm import tqdm
 from util.math.testing_util import strip_answer_string
 from util.model_utils import *
@@ -28,6 +29,7 @@ def make_scoring_conversations(dataset, system_prompt):
 
   return conversations
 
+
 def score_solutions(dataset, responses, outfile):
   idx = 0
   for _, key in tqdm(enumerate(dataset), total=len(dataset), desc="Scoring original solutions"):
@@ -42,27 +44,30 @@ def score_solutions(dataset, responses, outfile):
   return dataset
 
 
-def filter_solutions(scored_dataset):
-  # Filter correct solutions and ensure each problem has at least 2 correct responses
-  filtered_dataset = {
-    key: {
-      "responses": {
-        r_key: r_value
-        for r_key, r_value in problem["responses"].items()
-        if r_value["correctness"]
-      },
-      "token_usages": {
-        t_key: t_value
-        for t_key, t_value in problem["token_usages"].items()
-        if t_key in problem["responses"] and problem["responses"][t_key]["correctness"]
-      },
-    }
-    for key, problem in scored_dataset.items()
-    if sum(r["correctness"] for r in problem["responses"].values()) >= 2
-  }
+def filter_solutions(dataset):
+  # First filter out incorrect responses.
+  for key in dataset:
+    problem = dataset[key]
+    keys_to_filter = []
+    for response_key in problem["responses"]:
+      if not problem["responses"][response_key]["correctness"]:
+        keys_to_filter.append(response_key)
+    for k in keys_to_filter:
+      del problem["responses"][k]
+      del problem["token_usages"][k]
 
-  # Extract shortest and longest correct solutions
-  for _, problem in filtered_dataset.items():
+  # Next, filter out examples with <2 correct responses.
+  keys_to_filter = []
+  for key in dataset:
+    problem = dataset[key]
+    if len(problem["responses"]) < 2:
+      keys_to_filter.append(key)
+  for k in keys_to_filter:
+    del dataset[k]
+
+  # Finally, filter for the shortest and longest solutions for each sample.
+  for key in dataset:
+    problem = dataset[key]
     token_usages = problem["token_usages"]
     shortest_key, shortest_entry = min(token_usages.items(), key=lambda x: x[1]["completion_tokens"])
     longest_key, longest_entry = max(token_usages.items(), key=lambda x: x[1]["completion_tokens"])
@@ -70,13 +75,14 @@ def filter_solutions(scored_dataset):
       "shortest": shortest_entry,
       "longest": longest_entry,
     }
-    problem["responses"] = {
+    new_responses = {
       "shortest": problem["responses"][shortest_key],
-      "longest": problem["responses"][longest_key],
+      "longest":problem["responses"][longest_key],
     }
+    problem["responses"] = new_responses
 
-    return filtered_dataset
-
+  return dataset 
+  
 
 def make_splitting_conversations(data, system_prompt):
   conversations = []
@@ -104,6 +110,7 @@ def split_solutions(dataset, responses, delimiter):
     problem["responses"]["shortest"]["subsolutions"] = solutions
   return dataset
 
+
 def make_subscoring_conversations(dataset, system_prompt):
   conversations = []
   for _, key in enumerate(dataset):
@@ -116,7 +123,6 @@ def make_subscoring_conversations(dataset, system_prompt):
         {"role": "system", "content": system_prompt},
         {"role": "user", "content": prompt_text}
       ])
-
   return conversations
 
 
@@ -181,17 +187,18 @@ def build_response_variants(dataset):
   return dataset
 
 
-def compute_token_usages(dataset, llm):
+def compute_token_usages(dataset, variants, llm):
   tokenizer = llm.get_tokenizer()
   for key in tqdm(dataset, desc="Computing token usages", total=len(dataset)):
     problem = dataset[key]
     prompt_tokens = problem["token_usages"]["shortest"]["prompt_tokens"]
-    for variant in ["fcs", "fcs_plus1", "fcs_reflection"]:
+    for variant in variants:
       problem["token_usages"][variant] = {
         "prompt_tokens": prompt_tokens,
         "completion_tokens": len(tokenizer(problem["responses"][variant]).input_ids)
       }
   return dataset
+
 
 def build_question_prompt(prompt):
   return "Return your final response within \\boxed{{}}" + prompt
@@ -223,6 +230,76 @@ def make_preference_conversations(final_dataset, format, system_prompt):
 
   return conversations
 
+
+def make_SILC_conversations(dataset, system_prompt):
+  keys_to_filter = []
+  for prompt in dataset:
+    problem = dataset[prompt]
+    contition = False
+    for response_key in problem["responses"]:
+       if not problem["responses"][response_key]['correctness']:
+          wrong_length = problem["token_usages"][response_key]['completion_tokens']
+          for k in problem["responses"]:
+            if k != response_key and problem["token_usages"][k]['completion_tokens'] > wrong_length and problem["responses"][k]['correctness']:
+              contition = True
+              break
+          break
+    if not contition:
+      keys_to_filter.append(prompt)
+
+  for key in keys_to_filter:
+    del dataset[key]
+  
+  # Build contrastive pairs out of {short incorrect, long correct}
+  conversations = []
+  for prompt in dataset:
+    problem = dataset[prompt]
+
+    shortest_incorrect_key = None
+    shortest_incorrect_length = float('inf')
+
+    # Get shortest incorrect.
+    for response_key in problem["responses"]:
+      if not problem["responses"][response_key]['correctness']:
+        length = problem["token_usages"][response_key]['completion_tokens']
+        if length < shortest_incorrect_length:
+          shortest_incorrect_length = length
+          shortest_incorrect_key = response_key
+
+    # Get next longest correct.
+    shortest_correct_longer_key = None
+    shortest_correct_longer_length = float('inf')
+    for response_key in problem["responses"]:
+      if problem["responses"][response_key]['correctness']:
+        length = problem["token_usages"][response_key]['completion_tokens']
+        if length > shortest_incorrect_length and length < shortest_correct_longer_length:
+          shortest_correct_longer_length = length
+          shortest_correct_longer_key = response_key
+
+    convo = {}
+    convo["conversations"] = [
+      {
+        "from": "system",
+        "value": system_prompt,
+      },
+      {
+        "from": "human",
+        "value": build_question_prompt(prompt),
+      }
+    ]
+    convo["chosen"] = {
+      "from": "gpt",
+      "value": problem["responses"][shortest_correct_longer_key]['content'],
+    }
+    convo["rejected"] = {
+      "from": "gpt",
+      "value": problem["responses"][shortest_incorrect_key]["content"]
+    }
+    conversations.append(convo)
+  
+  return conversations
+
+
 def main():
   parser = argparse.ArgumentParser(description="Filter, rewrite, and format generated responses for high-quality data curation.")
   parser.add_argument("--rewrite-model", type=str, required=True, default="meta-llama/Llama-3.3-70B-Instruct", help="The model used for response processing.")
@@ -230,6 +307,7 @@ def main():
   parser.add_argument("--dataset", type=str, required=True, help="Path to the starting dataset of generated responses to filter from.")
   parser.add_argument("--result-dir", type=str, default="./", help="Result directory to save processed data.")
   parser.add_argument("--checkpoint", action="store_true", help="Whether to checkpoint the dataset at each step.")
+  parser.add_argument("--SILC", action="store_true", help="Whether to include short-incorrect/long-correct (SILC) preference pairs.")
   parser.add_argument("--tp", type=int, default=8, help="Tensor Parallelism Degree")
   parser.add_argument("--max_tokens", type=int, default=32768, help="Max tokens for the model.")
   args = parser.parse_args()
@@ -241,10 +319,10 @@ def main():
   llm = LLM(model=args.rewrite_model, tensor_parallel_size=args.tp)
   sampling_params = SamplingParams(max_tokens=args.max_tokens)
   
-  dataset = load_dataset(args.dataset)
+  original_dataset = load_dataset(args.dataset)  
   
   # Filter for the shortest and longest correct solutions.
-  filtered_dataset = filter_solutions(dataset)
+  filtered_dataset = filter_solutions(original_dataset)
   if args.checkpoint:
     outfile = os.path.join(args.result_dir, f"filtered-responses.json")
     with open(outfile, 'w', encoding='utf-8') as new_file:
@@ -275,24 +353,33 @@ def main():
     outfile = os.path.join(args.result_dir, f"response-variants.json")
     with open(outfile, 'w', encoding='utf-8') as new_file:
         json.dump(variants_dataset, new_file, ensure_ascii=False, indent=2)
-
+        
   # Add per-variant token counts to dataset for convenience.
-  final_dataset = compute_token_usages(variants_dataset, llm)
+  final_dataset = compute_token_usages(variants_dataset, ["fcs", "fcs_plus1", "fcs_reflection"], llm)
 
   system_prompt = SYSTEM_PROMPT[args.target_model]
 
-  # Save each variant in conversation format.
+  # Generate conversation format for each variant, which can be used in SimPO/DPO/etc.
   fcs_convo = make_preference_conversations(final_dataset, "fcs", system_prompt)
+  fcs_plus1_convo = make_preference_conversations(final_dataset, "fcs_plus1", system_prompt)
+  fcs_reflection_convo = make_preference_conversations(final_dataset, "fcs_reflection", system_prompt)
+  
+  # Optionall add short incorrect, long correct (SILC) conversations
+  if args.SILC:
+    short_incorrect_long_correct_conversations = make_SILC_conversations(load_dataset(args.dataset), system_prompt)
+    for convo in [fcs_convo, fcs_plus1_convo, fcs_reflection_convo]:
+      convo += short_incorrect_long_correct_conversations
+      random.shuffle(convo)
+    
+  # Save final conversation variants.
   fcs_outfile = os.path.join(args.result_dir, "fcs-conversations.json")
   with open(fcs_outfile, 'w', encoding='utf-8') as new_file:
     json.dump(fcs_convo, new_file, ensure_ascii=False, indent=2)
-        
-  fcs_plus1_convo = make_preference_conversations(final_dataset, "fcs_plus1", system_prompt)
+    
   fcs_plus1_outfile = os.path.join(args.result_dir, "fcs_plus1-conversations.json")
   with open(fcs_plus1_outfile, 'w', encoding='utf-8') as new_file:
     json.dump(fcs_plus1_convo, new_file, ensure_ascii=False, indent=2)
-        
-  fcs_reflection_convo = make_preference_conversations(final_dataset, "fcs_reflection", system_prompt)
+    
   fcs_reflection_outfile = os.path.join(args.result_dir, "fcs_reflection-conversations.json")
   with open(fcs_reflection_outfile, 'w', encoding='utf-8') as new_file:
     json.dump(fcs_reflection_convo, new_file, ensure_ascii=False, indent=2)
