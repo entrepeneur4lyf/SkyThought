@@ -1,5 +1,5 @@
 from dataclasses import dataclass
-from typing import Optional, Union, List
+from typing import List, Optional
 
 
 @dataclass
@@ -20,7 +20,7 @@ class Response:
         Returns:
             Responses: New instance initialized with Ray response data
         """
-        
+
         if isinstance(response["generated_text"], list):
             # n > 1 samples
             response_texts = response["generated_text"]
@@ -67,7 +67,9 @@ class Response:
         Returns:
             Responses: New instance initialized with vLLM response data
         """
-        response_texts = [response.outputs[i].text for i in range(len(response.outputs))]
+        response_texts = [
+            response.outputs[i].text for i in range(len(response.outputs))
+        ]
         num_completion_tokens = [len(s) for s in response_texts]
         return cls(
             response=response_texts,

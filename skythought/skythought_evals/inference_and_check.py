@@ -205,7 +205,6 @@ def perform_inference_and_check(
                             response_entry.content,
                         )
                     ] = (idx, sample_idx)
-                    
 
             for future in tqdm(
                 as_completed(future_to_task),
@@ -229,25 +228,31 @@ def perform_inference_and_check(
                     prompt = conversations[idx][1]["content"]
                     results[problem_key]["prompt"] = prompt
                     results[problem_key]["input_conversation"] = conversations[idx]
-                    temperature_to_scores[temp][idx] = [0 for _ in range(args.n)] 
+                    temperature_to_scores[temp][idx] = [0 for _ in range(args.n)]
 
                 if str(temp) not in results[problem_key]["responses"]:
-                    results[problem_key]["responses"][str(temp)] = [{} for _ in range(args.n)]
+                    results[problem_key]["responses"][str(temp)] = [
+                        {} for _ in range(args.n)
+                    ]
 
-                results[problem_key]["responses"][str(temp)][sample_idx] = response_entry
+                results[problem_key]["responses"][str(temp)][
+                    sample_idx
+                ] = response_entry
                 # do this only once per problem/idx
                 if str(temp) not in results[problem_key]["token_usages"]:
                     results[problem_key]["token_usages"][str(temp)] = token_usages[idx]
 
                 # update scores
-                temperature_to_scores[temp][idx][sample_idx] = response_entry["correctness"]
+                temperature_to_scores[temp][idx][sample_idx] = response_entry[
+                    "correctness"
+                ]
 
         print(f"Final acc: {total_correct}/{total_finish}")
 
         acc = round(total_correct / total_finish, 4) if total_finish > 0 else 0
         temperature_to_acc[temp] = acc
         print(json.dumps({"acc": acc}))
-    
+
     pass_at_k_metrics = None
     if args.n > 1:
         pass_at_k_metrics = pass_at_k(args.n, temperature_to_scores)
@@ -290,7 +295,7 @@ def perform_inference_and_check(
             else 0
         ),
         "pass_at_k": pass_at_k_metrics,
-        "accuracy": temperature_to_acc
+        "accuracy": temperature_to_acc,
     }
 
     # Save the token usage dictionary to the result file
@@ -640,7 +645,8 @@ def main():
     if args.result_dir and not os.path.exists(args.result_dir):
         os.makedirs(args.result_dir)
     temperature_str = ",".join(map(str, temperatures))
-    file_suffix = f"{model_config.name}_{args.task}_{args.split}_subset_{args.subset}_filter_{args.filter_difficulty}_s{args.start}_e{args.end}_t{temperature_str}"
+    file_suffix = f"{model_config.name}_{args.task}_{args.split}_subset_{args.subset}_filter_{args.filter_difficulty}"
+    f"_s{args.start}_e{args.end}_t{temperature_str}"
     if (
         args.math_difficulty_lower_bound is not None
         or args.math_difficulty_upper_bound is not None
