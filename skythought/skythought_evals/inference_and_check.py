@@ -251,7 +251,7 @@ def perform_inference_and_check(
         print(f"Final acc: {total_correct}/{total_finish}")
 
         acc = round(total_correct / total_finish, 4) if total_finish > 0 else 0
-        temperature_to_acc[temp] = acc
+        temperature_to_acc[f"{temp=}"] = acc
         print(json.dumps({"acc": acc}))
 
     pass_at_k_metrics = None
@@ -607,7 +607,8 @@ def main():
     # load ray config
     if args.use_ray:
         warnings.warn(
-            "`tp` CLI argument is not compatible with `use-ray` and will be ignored. Please configure tensor parallel size in the `ray_config` YAML",stacklevel=1
+            "`tp` CLI argument is not compatible with `use-ray` and will be ignored. Please configure tensor parallel size in the `ray_config` YAML",
+            stacklevel=1,
         )
         if not args.ray_config:
             # load default

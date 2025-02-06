@@ -40,7 +40,10 @@ def parse_arguments():
         "--result-dir", type=str, default=".", help="Directory to save result files."
     )
     parser.add_argument(
-        "--output-file", type=str, default="", help="[OBSOLETE] Output file to save results to."
+        "--output-file",
+        type=str,
+        default="",
+        help="[OBSOLETE] Output file to save results to.",
     )
     return parser.parse_args()
 
@@ -71,7 +74,9 @@ def write_logs_to_file(logs, output_file):
 def main():
     args = parse_arguments()
     if args.output_file:
-        warnings.warn("`output-file` CLI argument is obsolete and will be ignored.")
+        warnings.warn(
+            "`output-file` CLI argument is obsolete and will be ignored.", stacklevel=1
+        )
     # Extract the arguments
     model_path = args.model
     evals = args.evals.split(",")

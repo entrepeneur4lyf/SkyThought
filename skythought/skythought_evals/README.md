@@ -33,17 +33,25 @@ We further recommend streaming all outputs to a log file for reference:
 ```shell
 python -m skythought_evals.eval --model Qwen/QwQ-32B-Preview --evals=aime,math500,gpqa_diamond --tp=8 --result-dir ./ 2>&1 | tee mylogs.txt
 ```
-
     
 Example result: `{"AIME": <aime_accuracy>, "MATH500": <math500_accuracy>, "GPQADiamond": <gpqa_diamond_accuracy>}` 
+
+### Scaling evaluation with Ray
+
+You can scale evaluations across multiple model replicas (and across multiple nodes) with `inference_and_check` using [ray](https://docs.ray.io):
+
+```shell
+python -m skythought_evals.inference_and_check --task math500 --model Qwen/Qwen2-7B-Instruct --max_tokens 4096 --split test --result-dir ./ --temperatures 0.7 --use-ray 
+```
+
+By default, we make use of the configuration in [ray_configs/ray_config.yaml](./ray_configs/ray_config.yaml). You can also customize this with `--ray-config /path/to/ray_config.yaml`. 
 
 #### Best-of-N Evaluation
 
 While we are actively working on a better CLI interface, you can use `-m skythought_evals.inference_and_check` for Best-of-N evaluation. 
 
 ```bash
-python -m skythought_evals.inference_and_check --task math500 --model Qwen/Qwen2-7B-Instruct --tp 4 --max_tokens 4096 --split test --result-dir ./ --inference --temperatures 0.7 --n 64
-python -m skythought_evals.inference_and_check --task math500 --model Qwen/Qwen2-7B-Instruct --tp 4 --max_tokens 4096 --split test --result-dir ./ --check --temperatures 0.7 --n 8
+python -m skythought_evals.inference_and_check --task math500 --model Qwen/Qwen2-7B-Instruct --tp 4 --max_tokens 4096 --split test --result-dir ./ --temperatures 0.7 --n 64
 ```
 
 ### Distill and Reject Sampling
@@ -63,3 +71,13 @@ python -m skythought_evals.inference_and_check --task numina --model Qwen/QwQ-32
 
 python -m skythought_evals.inference_and_check --task numina --model Qwen/QwQ-32B-Preview --tp 8 --max_tokens 16384 --split train --end 20000--source olympiads --filter-difficulty --result-dir $SKYT_HOME/data --math-difficulty-lower-bound 9 --math-difficulty-upper-bound 9
 ```
+
+### Reproducibility Issues
+
+
+We've noticed that it can be hard to reproduce results in reasoning benchmarks. Beyond the lack of agreed sampling parameters and metrics in the field at the moment, there can be significant differences in results across different evaluation codebases, and even for the same codebase with a different set of dependencies. In bfloat16/ half-precision, numerical error accumulation will change outputs ever so slightly, which can dramatically alter final performance. There are three factors we've noticed that affect results:
+
+- Long context generations: Errors can accumulate so that the output changes at 1k+ tokens, which compound as you keep generating. Since we typically set max tokens to be 16k or 32k tokens, the final solution will change significantly
+- vLLM settings:  With vLLM, we’ve also noticed that at half-precision, different batch sizes can affect downstream evaluation results by a few percentage points. Further, different tensor parallelism settings can also change results in half-precision.
+
+ We recommend to run all evaluation benchmarks at full precision, i.e float32 to avoid this.  By default, we run evaluation in `float32`, which can be customized with the `--dtype` flag. In full-precision, evaluation results should be robust to chanes in batch size, tensor parallel size, etc. 
