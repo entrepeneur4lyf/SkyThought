@@ -225,11 +225,9 @@ def perform_inference_and_check(
                     results[problem_key]["input_conversation"] = conversations[idx]
 
                 if str(temp) not in results[problem_key]["responses"]:
-                    results[problem_key]["responses"][str(temp)] = []
+                    results[problem_key]["responses"][str(temp)] = [{} for _ in range(args.n)]
 
-                # args.n responses can come in any order, but we can safely ignore
-                # sample idx and just save as results come in
-                results[problem_key]["responses"][str(temp)].append(response_entry)
+                results[problem_key]["responses"][str(temp)][sample_idx] = response_entry
                 # do this only once per problem/idx
                 if str(temp) not in results[problem_key]["token_usages"]:
                     results[problem_key]["token_usages"][str(temp)] = token_usages[idx]
