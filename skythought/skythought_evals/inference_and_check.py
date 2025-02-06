@@ -26,6 +26,7 @@ from skythought_evals.tasks import (
     TaskHandler,
 )
 from skythought_evals.util.common import set_seed
+from skythought_evals.util.metrics import pass_at_k
 from skythought_evals.util.response import Response, SingleParsedResponse
 from tqdm import tqdm
 from vllm import LLM, SamplingParams
@@ -171,6 +172,9 @@ def perform_inference_and_check(
     conversations = handler.make_conversations(
         remaining_data, model_config.system_prompt, model_config.user_template
     )
+    temperature_to_scores = {}
+    temperature_to_acc = {}
+    responses = []
     for temp in temperatures:
         if len(conversations) == 0:
             print("No more data to process")
@@ -180,6 +184,7 @@ def perform_inference_and_check(
 
         total_correct = 0
         total_finish = 0
+        temperature_to_scores[temp] = {}
         with ProcessPoolExecutor(max_workers=32) as executor:
             future_to_task = {}
             token_usages = {}
@@ -200,6 +205,7 @@ def perform_inference_and_check(
                             response_entry.content,
                         )
                     ] = (idx, sample_idx)
+                    
 
             for future in tqdm(
                 as_completed(future_to_task),
@@ -223,6 +229,7 @@ def perform_inference_and_check(
                     prompt = conversations[idx][1]["content"]
                     results[problem_key]["prompt"] = prompt
                     results[problem_key]["input_conversation"] = conversations[idx]
+                    temperature_to_scores[temp][idx] = [0 for _ in range(args.n)] 
 
                 if str(temp) not in results[problem_key]["responses"]:
                     results[problem_key]["responses"][str(temp)] = [{} for _ in range(args.n)]
@@ -232,9 +239,19 @@ def perform_inference_and_check(
                 if str(temp) not in results[problem_key]["token_usages"]:
                     results[problem_key]["token_usages"][str(temp)] = token_usages[idx]
 
+                # update scores
+                temperature_to_scores[temp][idx][sample_idx] = response_entry["correctness"]
+
         print(f"Final acc: {total_correct}/{total_finish}")
+
         acc = round(total_correct / total_finish, 4) if total_finish > 0 else 0
+        temperature_to_acc[temp] = acc
         print(json.dumps({"acc": acc}))
+    
+    pass_at_k_metrics = None
+    if args.n > 1:
+        pass_at_k_metrics = pass_at_k(args.n, temperature_to_scores)
+        print(json.dumps({"pass_at_k": pass_at_k_metrics}))
 
     total_prompt_tokens = sum(
         results[key]["token_usages"][str(temp)][sample_idx]["prompt_tokens"]
@@ -252,14 +269,14 @@ def perform_inference_and_check(
 
     # Token usage summary
     result_dir, result_name = os.path.split(result_file)
-    token_usage_dir = os.path.join(result_dir, "token_usage")
-    os.makedirs(token_usage_dir, exist_ok=True)
+    metrics_dir = os.path.join(result_dir, "metrics")
+    os.makedirs(metrics_dir, exist_ok=True)
 
     # Construct the token usage result file path
-    token_usage_result_file = os.path.join(token_usage_dir, result_name)
+    metrics_result_file = os.path.join(metrics_dir, result_name)
 
     # Prepare the token usage dictionary
-    token_dict = {
+    metrics_dict = {
         "completion_tokens": total_completion_tokens,
         "prompt_tokens": total_prompt_tokens,
         "avg_completion_tokens": (
@@ -272,13 +289,15 @@ def perform_inference_and_check(
             if total_prompt_tokens
             else 0
         ),
+        "pass_at_k": pass_at_k_metrics,
+        "accuracy": temperature_to_acc
     }
 
     # Save the token usage dictionary to the result file
-    with open(token_usage_result_file, "w") as f:
-        json.dump(token_dict, f, indent=4)
+    with open(metrics_result_file, "w") as f:
+        json.dump(metrics_dict, f, indent=4)
 
-    print(f"Token usage saved to {token_usage_result_file}")
+    print(f"Metrics saved to {metrics_result_file}")
 
     with open(result_file, "w", encoding="utf-8") as file:
         json.dump(results, file, ensure_ascii=False, indent=4, cls=NumpyEncoder)
@@ -445,14 +464,14 @@ def perform_inference_and_save(
 
     # Token usage summary put into another subdirectory
     result_dir, result_name = os.path.split(result_file)
-    token_usage_dir = os.path.join(result_dir, "token_usage")
-    os.makedirs(token_usage_dir, exist_ok=True)
+    metrics_dir = os.path.join(result_dir, "metrics")
+    os.makedirs(metrics_dir, exist_ok=True)
 
     # Construct the token usage result file path
-    token_usage_result_file = os.path.join(token_usage_dir, result_name)
+    metrics_result_file = os.path.join(metrics_dir, result_name)
 
     # Prepare the token usage dictionary
-    token_dict = {
+    metrics_dict = {
         "completion_tokens": sum(completion_tokens),
         "prompt_tokens": sum(prompt_tokens),
         "avg_completion_tokens": (
@@ -466,10 +485,10 @@ def perform_inference_and_save(
     }
 
     # Save the token usage dictionary to the result file
-    with open(token_usage_result_file, "w") as f:
-        json.dump(token_dict, f, indent=4)
+    with open(metrics_result_file, "w") as f:
+        json.dump(metrics_dict, f, indent=4)
 
-    print(f"Token usage saved to {token_usage_result_file}")
+    print(f"Token usage saved to {metrics_result_file}")
 
     with open(result_file, "w", encoding="utf-8") as file:
         json.dump(results, file, ensure_ascii=False, indent=4, cls=NumpyEncoder)
@@ -586,8 +605,8 @@ def main():
             args.ray_config = os.path.join(module_dir, DEFAULT_RAY_CONFIG_RELATIVE_PATH)
     set_seed(args.seed)
 
-    # use os to enable hf_transfer for model download
-    if os.environ.get("HF_HUB_ENABLE_HF_TRANSFER", None) not in ["1", "True"]:
+    # enable hf_transfer if not overriden by the user
+    if os.environ.get("HF_HUB_ENABLE_HF_TRANSFER", None) is None:
         os.environ["HF_HUB_ENABLE_HF_TRANSFER"] = "1"
 
     if args.task not in TASK_NAMES_TO_YAML:
@@ -621,7 +640,7 @@ def main():
     if args.result_dir and not os.path.exists(args.result_dir):
         os.makedirs(args.result_dir)
     temperature_str = ",".join(map(str, temperatures))
-    file_suffix = f"{model_config.name}_{args.task}_{args.split}_{args.subset}_{args.filter_difficulty}_{args.start}_{args.end}_t{temperature_str}"
+    file_suffix = f"{model_config.name}_{args.task}_{args.split}_subset_{args.subset}_filter_{args.filter_difficulty}_s{args.start}_e{args.end}_t{temperature_str}"
     if (
         args.math_difficulty_lower_bound is not None
         or args.math_difficulty_upper_bound is not None

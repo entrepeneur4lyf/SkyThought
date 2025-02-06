@@ -38,6 +38,12 @@ def parse_arguments():
         default=[0],
         help="Temperature for sampling.",
     )
+    parser.add_argument(
+        "--n", 
+        type=int,
+        default=1,
+        help="Number of samples generated per problem."
+    )
     return parser.parse_args()
 
 

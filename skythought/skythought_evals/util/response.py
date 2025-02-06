@@ -1,11 +1,11 @@
 from dataclasses import dataclass
-from typing import Optional, Union
+from typing import Optional, Union, List
 
 
 @dataclass
 class Response:
-    response: Union[str, list[str]]
-    num_completion_tokens: Union[int, list[int]]
+    response: List[str]
+    num_completion_tokens: List[int]
     num_input_tokens: int
     index: Optional[int] = None
 
@@ -20,16 +20,19 @@ class Response:
         Returns:
             Responses: New instance initialized with Ray response data
         """
+        
         if isinstance(response["generated_text"], list):
             # n > 1 samples
+            response_texts = response["generated_text"]
             num_completion_tokens = [
                 int(response["num_generated_tokens"][i])
                 for i in range(len(response["num_generated_tokens"]))
             ]
         else:
-            num_completion_tokens = int(response["num_generated_tokens"])
+            response_texts = [response["generated_text"]]
+            num_completion_tokens = [int(response["num_generated_tokens"])]
         return cls(
-            response=response["generated_text"],
+            response=response_texts,
             num_completion_tokens=num_completion_tokens,
             num_input_tokens=int(response["num_input_tokens"]),
             index=response["index"],
@@ -64,18 +67,10 @@ class Response:
         Returns:
             Responses: New instance initialized with vLLM response data
         """
-        response_text = (
-            [response.outputs[i].text for i in range(len(response.outputs))]
-            if len(response.outputs) > 1
-            else response.outputs[0].text
-        )
-        num_completion_tokens = (
-            [len(s) for s in response_text]
-            if not isinstance(response_text, str)
-            else len(response_text)
-        )
+        response_texts = [response.outputs[i].text for i in range(len(response.outputs))]
+        num_completion_tokens = [len(s) for s in response_texts]
         return cls(
-            response=response_text,
+            response=response_texts,
             num_completion_tokens=num_completion_tokens,
             num_input_tokens=len(response.prompt_token_ids),
         )
