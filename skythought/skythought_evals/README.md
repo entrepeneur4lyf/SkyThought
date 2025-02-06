@@ -20,7 +20,7 @@ We provide a wrapper script `eval.py` to conveniently run reasoning benchmarks. 
 **NOTE**: For reproducing `Sky-T1-32B-Preview` results on `AIME` and `GPQADiamond` dataset, pass in temperatures as `0.7`. 
 
 ```shell
-python -m skythought_evals.eval --model NovaSky-AI/Sky-T1-32B-Preview --evals=aime,gpqa_diamond --tp=8 --temperatures 0.7 --n 8
+python -m skythought_evals.eval --model NovaSky-AI/Sky-T1-32B-Preview --evals=aime,gpqa_diamond --tp=8 --temperatures 0.7 --n 16
 ```
 
 #### Example Usage

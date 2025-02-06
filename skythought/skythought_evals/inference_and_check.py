@@ -666,7 +666,7 @@ def main():
     if args.result_dir and not os.path.exists(args.result_dir):
         os.makedirs(args.result_dir)
     temperature_str = ",".join(map(str, temperatures))
-    file_suffix = f"{model_config.name}_{args.task}_{args.split}_subset_{args.subset}_filter_{args.filter_difficulty}"
+    file_suffix = f"{model_config.name}_{args.task}_{args.split}_subset_{args.subset}_filter_{args.filter_difficulty}" + \
     f"_s{args.start}_e{args.end}_t{temperature_str}_n{args.n}"
     if (
         args.math_difficulty_lower_bound is not None
