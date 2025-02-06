@@ -4,6 +4,7 @@ import copy
 import json
 import math
 import os
+import warnings
 from concurrent.futures import ProcessPoolExecutor, as_completed
 from functools import partial
 from typing import Dict, Tuple
@@ -586,10 +587,10 @@ def main():
     )
     parser.add_argument("--seed", type=int, default=41, help="Random seed.")
     parser.add_argument(
-        "--use_ray", action="store_true", help="Use ray for scaling inference."
+        "--use-ray", action="store_true", help="Use ray for scaling inference."
     )
     parser.add_argument(
-        "--ray_config",
+        "--ray-config",
         type=str,
         default=None,
         help="Ray configuration file if using ray for scaling inference. By default, we use the example in ray_configs/ray_config.yaml",
@@ -605,6 +606,9 @@ def main():
     args = parser.parse_args()
     # load ray config
     if args.use_ray:
+        warnings.warn(
+            "`tp` CLI argument is not compatible with `use-ray` and will be ignored. Please configure tensor parallel size in the `ray_config` YAML",stacklevel=1
+        )
         if not args.ray_config:
             # load default
             args.ray_config = os.path.join(module_dir, DEFAULT_RAY_CONFIG_RELATIVE_PATH)

@@ -10,7 +10,7 @@ export OPENAI_API_KEY={openai_api_key}
 ```
 
 ## Generation and Evaluation
-The file `-m skythought_evals.inference_and_check` provides convenient methods for generating sequences (e.g., for distillation or benchmark evaluation) and checking whether the generated solutions are correct (e.g., for reject sampling or benchmark evaluation).
+The file `inference_and_check.py` provides convenient methods for generating sequences (e.g., for distillation or benchmark evaluation) and checking whether the generated solutions are correct (e.g., for reject sampling or benchmark evaluation).
 
 ### Benchmark Evaluation
 We provide a wrapper script `eval.py` to conveniently run reasoning benchmarks. This script can be used to launch evaluations for multiple benchmarks, then aggregate and log the accuracy for all benchmarks.  To see the full list of supported args and valid arguments, run `python -m skythought_evals.eval --help`
@@ -20,13 +20,20 @@ We provide a wrapper script `eval.py` to conveniently run reasoning benchmarks. 
 **NOTE**: For reproducing `Sky-T1-32B-Preview` results on `AIME` and `GPQADiamond` dataset, pass in temperatures as `0.7`. 
 
 ```shell
-python -m skythought_evals.eval --model NovaSky-AI/Sky-T1-32B-Preview --evals=aime,gpqa_diamond --tp=8 --output_file=results.txt --temperatures 0.7 
+python -m skythought_evals.eval --model NovaSky-AI/Sky-T1-32B-Preview --evals=aime,gpqa_diamond --tp=8 --temperatures 0.7 --n 8
 ```
 
 #### Example Usage
 ```shell
-python -m skythought_evals.eval --model Qwen/QwQ-32B-Preview --evals=aime,math500,gpqa_diamond --tp=8 --output_file=results.txt
+python -m skythought_evals.eval --model Qwen/QwQ-32B-Preview --evals=aime,math500,gpqa_diamond --tp=8 --result-dir ./
 ```
+
+We further recommend streaming all outputs to a log file for reference:
+
+```shell
+python -m skythought_evals.eval --model Qwen/QwQ-32B-Preview --evals=aime,math500,gpqa_diamond --tp=8 --result-dir ./ 2>&1 | tee mylogs.txt
+```
+
     
 Example result: `{"AIME": <aime_accuracy>, "MATH500": <math500_accuracy>, "GPQADiamond": <gpqa_diamond_accuracy>}` 
 
