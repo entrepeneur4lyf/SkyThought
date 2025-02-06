@@ -79,3 +79,13 @@ class Response:
             num_completion_tokens=num_completion_tokens,
             num_input_tokens=len(response.prompt_token_ids),
         )
+
+
+@dataclass 
+class SingleParsedResponse:
+    content: str 
+    correctness: Optional[bool] = None
+    reason: Optional[str] = None 
+
+    def as_dict(self):
+        return {"content": self.content, "correctness": self.correctness, "reason": self.reason}

@@ -6,12 +6,13 @@ import math
 import os
 from concurrent.futures import ProcessPoolExecutor, as_completed
 from functools import partial
+from typing import Dict, Tuple, Any
 
 import numpy as np
 import ray
-from batch import Pipeline, init_engine_from_config
-from batch.env_config import EnvConfig
-from batch.workload import EvalWorkload, load_config_from_path
+from skythought_evals.batch import Pipeline, init_engine_from_config
+from skythought_evals.batch.env_config import EnvConfig
+from skythought_evals.batch.workload import EvalWorkload, load_config_from_path as load_rayllm_config_from_path
 from openai import OpenAI
 from skythought_evals.models import ModelConfig, get_system_prompt_keys
 from skythought_evals.tasks import (
@@ -22,12 +23,12 @@ from skythought_evals.tasks import (
     TaskHandler,
 )
 from skythought_evals.util.common import set_seed
-from skythought_evals.util.response import Response
+from skythought_evals.util.response import Response, SingleParsedResponse
 from tqdm import tqdm
 from vllm import LLM, SamplingParams
 
 module_dir = os.path.dirname(os.path.abspath(__file__))
-
+DEFAULT_RAY_CONFIG_RELATIVE_PATH = "ray_configs/ray_config.yaml"
 
 class NumpyEncoder(json.JSONEncoder):
     def default(self, obj):
@@ -63,8 +64,10 @@ def fetch_response_openai(llm, model_name, max_tokens, temp, prompt):
 
 
 def fetch_responses_ray(conversations, max_tokens, temp, args):
-    config = load_config_from_path(args.ray_config)
+    config = load_rayllm_config_from_path(args.ray_config)
     config["model_id"] = args.model
+    # use user-provided dtype from CLI
+    config["engine_kwargs"]["dtype"] = args.dtype
     engine_cfg = init_engine_from_config(config)
     ds = ray.data.from_items([(idx, conv) for idx, conv in enumerate(conversations)])
     num_replicas = config["env_config"].get("num_replicas", 1)
@@ -84,6 +87,28 @@ def fetch_responses_ray(conversations, max_tokens, temp, args):
     responses = ds.materialize()
     return responses
 
+def _parse_response_for_idx(response: Response, sample_idx: int, args) -> Tuple[SingleParsedResponse, Dict[str, int]]:
+    if args.model.startswith("openai"):
+        content = response.response.strip()
+    else:
+        content = response.response[sample_idx].strip()
+    response_entry = SingleParsedResponse(content=content)
+    
+    if args.model.startswith("openai"):
+        token_usage_for_response = {
+                "completion_tokens": response.num_completion_tokens,
+                "prompt_tokens": response.num_input_tokens,
+            }
+        
+    else:
+        token_usage_for_response = {
+                "completion_tokens": response.num_completion_tokens[
+                    sample_idx
+                ],
+                "prompt_tokens": response.num_input_tokens,
+        }
+    return response_entry, token_usage_for_response
+
 
 def inference(llm, conversations, max_tokens, temp, args):
     if args.use_ray:
@@ -97,6 +122,7 @@ def inference(llm, conversations, max_tokens, temp, args):
         responses = copy.deepcopy(responses)
         responses = sorted(responses, key=lambda x: x.index)
     elif args.model.startswith("openai"):
+        assert args.n == 1, "openai models don't support n > 1"
         fetch_partial = partial(
             fetch_response_openai, llm, args.model, max_tokens, temp
         )
@@ -106,7 +132,7 @@ def inference(llm, conversations, max_tokens, temp, args):
 
         responses = [Response.from_openai_response(response) for response in responses]
     else:
-        sampling_params = SamplingParams(max_tokens=max_tokens, temperature=temp)
+        sampling_params = SamplingParams(max_tokens=max_tokens, temperature=temp, n=args.n)
         responses = llm.chat(
             messages=conversations, sampling_params=sampling_params, use_tqdm=True
         )
@@ -124,7 +150,6 @@ def perform_inference_and_check(
     model_config,
     args,
 ):
-    assert args.n == 1, "Check does not support multiple samples"
     results = handler.load_existing_results(result_file)
     print(f"Loaded {len(results)} existing results.")
     train_data = handler.load_and_filter_dataset(
@@ -145,31 +170,35 @@ def perform_inference_and_check(
             continue
 
         responses = inference(llm, conversations, max_tokens, temp, args)
-
+        
         total_correct = 0
         total_finish = 0
         with ProcessPoolExecutor(max_workers=32) as executor:
             future_to_task = {}
             token_usages = {}
             for idx, response in enumerate(responses):
-                response_str = response.response.strip()
-                future_to_task[
-                    executor.submit(
-                        handler.update_results, remaining_data[idx], response_str
-                    )
-                ] = idx
-                token_usages[idx] = {
-                    "completion_tokens": response.num_completion_tokens,
-                    "prompt_tokens": response.num_input_tokens,
-                }
+                for sample_idx in range(args.n):
+                    # response_entry at this point doesn't contain correctness check. 
+                    response_entry, token_usage_for_response = _parse_response_for_idx(response, sample_idx, args)                    
+                    if idx not in token_usages: 
+                        token_usages[idx] = []
+                    token_usages[idx].append(token_usage_for_response)
+                    # submit correctness check for response
+                    future_to_task[
+                        executor.submit(
+                            handler.update_results, remaining_data[idx], response_entry.content
+                        )
+                    ] = (idx, sample_idx)
 
             for future in tqdm(
                 as_completed(future_to_task),
                 total=len(future_to_task),
                 desc="Processing Generations",
             ):
-                idx = future_to_task[future]
-                response_entry = future.result()
+                idx, sample_idx = future_to_task[future]
+                # TODO (sumanthrh): the returned entry is currently a dict and can be confusing. 
+                # this should also be a ParsedResponse object. 
+                response_entry: dict = future.result()
                 total_correct += response_entry["correctness"]
                 total_finish += 1
 
@@ -183,28 +212,34 @@ def perform_inference_and_check(
                     prompt = conversations[idx][1]["content"]
                     results[problem_key]["prompt"] = prompt
                     results[problem_key]["input_conversation"] = conversations[idx]
-
-                results[problem_key]["responses"][str(temp)] = response_entry
-
-                results[problem_key]["token_usages"][str(temp)] = token_usages[idx]
+                
+                if str(temp) not in results[problem_key]["responses"]:
+                    results[problem_key]["responses"][str(temp)] = []
+                    
+                # args.n responses can come in any order, but we can safely ignore
+                # sample idx and just save as results come in
+                results[problem_key]["responses"][str(temp)].append(response_entry)
+                # do this only once per problem/idx
+                if str(temp) not in results[problem_key]["token_usages"]: 
+                    results[problem_key]["token_usages"][str(temp)] = token_usages[idx]
 
         print(f"Final acc: {total_correct}/{total_finish}")
         acc = round(total_correct / total_finish, 4) if total_finish > 0 else 0
         print(json.dumps({"acc": acc}))
 
-    completion_tokens = [
-        results[key]
-        .get("token_usages", {})
-        .get(str(temp), {})
-        .get("completion_tokens", 0)
+    total_prompt_tokens = sum(
+        results[key]["token_usages"][str(temp)][sample_idx]["prompt_tokens"]
+        for sample_idx in range(args.n)
         for key in results
         for temp in temperatures
-    ]
-    prompt_tokens = [
-        results[key].get("token_usages", {}).get(str(temp), {}).get("prompt_tokens", 0)
+    )
+    total_completion_tokens = sum(
+        results[key]["token_usages"][str(temp)][sample_idx]["completion_tokens"]
+        for sample_idx in range(args.n)
         for key in results
         for temp in temperatures
-    ]
+    )
+    num_responses_total = len(responses) * args.n * len(temperatures)
 
     # Token usage summary
     result_dir, result_name = os.path.split(result_file)
@@ -216,15 +251,15 @@ def perform_inference_and_check(
 
     # Prepare the token usage dictionary
     token_dict = {
-        "completion_tokens": sum(completion_tokens),
-        "prompt_tokens": sum(prompt_tokens),
+        "completion_tokens": total_completion_tokens,
+        "prompt_tokens": total_prompt_tokens,
         "avg_completion_tokens": (
-            round(sum(completion_tokens) / len(completion_tokens), 3)
-            if completion_tokens
+            round(total_completion_tokens / num_responses_total, 3)
+            if total_completion_tokens
             else 0
         ),
         "avg_prompt_tokens": (
-            round(sum(prompt_tokens) / len(prompt_tokens), 3) if prompt_tokens else 0
+            round(total_prompt_tokens / num_responses_total, 3) if total_prompt_tokens else 0
         ),
     }
 
@@ -305,7 +340,7 @@ def perform_check(handler: TaskHandler, temperatures, result_file, args):
             total_finish += 1
 
             # Update the corresponding record in results
-            problem_key = item[handler.get_question_key()]
+            problem_key = item[handler.question_key]
             if problem_key not in correct[temp]:
                 correct[temp][problem_key] = False
             if new_response_entry["correctness"]:
@@ -369,33 +404,10 @@ def perform_inference_and_save(
             token_usages = []
             completion_token = 0
             for sample_idx in range(args.n):
-                if args.model.startswith("openai"):
-                    content = response.response.strip()
-                else:
-                    content = response.response[sample_idx].strip()
-                response_entry = {
-                    "content": content,
-                    "correctness": None,
-                    "reason": None,
-                }
+                response_entry, token_usage_for_response = _parse_response_for_idx(response, sample_idx, args)
+                token_usages.append(token_usage_for_response)
+                completion_token += token_usage_for_response["completion_tokens"]
                 response_entries.append(response_entry)
-                if args.model.startswith("openai"):
-                    token_usages.append(
-                        {
-                            "completion_tokens": response.num_completion_tokens,
-                            "prompt_tokens": response.num_input_tokens,
-                        }
-                    )
-                else:
-                    token_usages.append(
-                        {
-                            "completion_tokens": response.num_completion_tokens[
-                                sample_idx
-                            ],
-                            "prompt_tokens": response.num_input_tokens,
-                        }
-                    )
-                    completion_token += response.num_completion_tokens[sample_idx]
 
             completion_token /= args.n
             prompt_token = response.num_input_tokens
@@ -542,11 +554,18 @@ def main():
     parser.add_argument(
         "--ray_config",
         type=str,
-        default="ray_configs/ray_config.yaml",
-        help="Ray configuration file if using ray for scaling inference.",
+        default=None,
+        help="Ray configuration file if using ray for scaling inference. By default, we use the example in ray_configs/ray_config.yaml",
     )
-
+    parser.add_argument(
+        "--dtype", type=str, choices=["float32", "auto", "float16", "bfloat16"], help="dtype for inference with vLLM. Full-precision by default. 'auto' refers to automatically inferring dtype for the model", default="float32"
+    )
     args = parser.parse_args()
+    # load ray config
+    if args.use_ray:
+        if not args.ray_config:
+            # load default
+            args.ray_config = os.path.join(module_dir, DEFAULT_RAY_CONFIG_RELATIVE_PATH)
     set_seed(args.seed)
 
     # use os to enable hf_transfer for model download
@@ -583,18 +602,20 @@ def main():
     # create result dir if not exists
     if args.result_dir and not os.path.exists(args.result_dir):
         os.makedirs(args.result_dir)
+    temperature_str = ','.join(map(str, temperatures))
+    file_suffix = f"{model_config.name}_{args.task}_{args.split}_{args.subset}_{args.filter_difficulty}_{args.start}_{args.end}_t{temperature_str}"
     if (
         args.math_difficulty_lower_bound is not None
         or args.math_difficulty_upper_bound is not None
     ):
         result_file = os.path.join(
             args.result_dir,
-            f"{model_config.name}_{args.task}_{args.split}_{args.subset}_{args.filter_difficulty}_{args.start}_{args.end}_{args.math_difficulty_lower_bound}_{args.math_difficulty_upper_bound}.json",
+            f"{model_config.name}_{file_suffix}_{args.math_difficulty_upper_bound}.json",
         )
     else:
         result_file = os.path.join(
             args.result_dir,
-            f"{model_config.name}_{args.task}_{args.split}_{args.subset}_{args.filter_difficulty}_{args.start}_{args.end}.json",
+            f"{file_suffix}.json",
         )
 
     if args.check:
@@ -604,12 +625,10 @@ def main():
             or args.math_difficulty_upper_bound is not None
         ):
             converted_file = (
-                f"{args.result_dir}/converted_{model_config.name}_{args.task}_{args.split}_{args.subset}_{args.filter_difficulty}_{args.start}_{args.end}"
-                + f"_{args.math_difficulty_lower_bound}_{args.math_difficulty_upper_bound}.json"
+                f"{args.result_dir}/converted_{file_suffix}.json"
             )
         else:
-            converted_file = f"{args.result_dir}/converted_{model_config.name}_{args.task}_{args.split}_{args.subset}_{args.filter_difficulty}"
-            f"_{args.start}_{args.end}.json"
+            converted_file = f"{args.result_dir}/converted_{file_suffix}.json"
         if os.path.exists(converted_file):
             result_file = converted_file
         perform_check(handler, temperatures, result_file, args)
@@ -621,7 +640,7 @@ def main():
             llm = (
                 OpenAI()
                 if args.model.startswith("openai")
-                else LLM(model=args.model, tensor_parallel_size=args.tp)
+                else LLM(model=args.model, tensor_parallel_size=args.tp, dtype=args.dtype)
             )
         if args.inference:
             perform_inference_and_save(

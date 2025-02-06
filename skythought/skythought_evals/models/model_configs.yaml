@@ -21,7 +21,7 @@ system_prompts:
         <|begin_of_solution|> \
         {final formatted, precise, and clear solution} \
         <|end_of_solution|> \
-        Now, try to solve the following question through the above guidelines:"
+        Now, try to solve the following question through the above guidelines."
 
 user_templates: null
 # Example: 
@@ -67,7 +67,7 @@ models:
     system_prompt: *qwen_cot_system_prompt
 
   PRIME-RL/Eurus-2-7B-PRIME:
-    system_prompt:  *prime_rl_system_prompt
+    system_prompt: *prime_rl_system_prompt
 
   NovaSky-AI/Sky-T1-32B-Preview:  
     system_prompt: *sky_t1_system_prompt
