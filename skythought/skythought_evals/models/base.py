@@ -3,7 +3,7 @@ from pathlib import Path
 from typing import Optional, Union
 
 import yaml
-from pydantic import BaseModel, Field, PrivateAttr, field_validator, model_validator
+from pydantic import BaseModel, Field, PrivateAttr, model_validator
 
 MODEL_CONFIG_FILE_PATH = Path(__file__).parent / "model_configs.yaml"
 # cache the configs in a global var

@@ -81,11 +81,15 @@ class Response:
         )
 
 
-@dataclass 
+@dataclass
 class SingleParsedResponse:
-    content: str 
+    content: str
     correctness: Optional[bool] = None
-    reason: Optional[str] = None 
+    reason: Optional[str] = None
 
     def as_dict(self):
-        return {"content": self.content, "correctness": self.correctness, "reason": self.reason}
+        return {
+            "content": self.content,
+            "correctness": self.correctness,
+            "reason": self.reason,
+        }
