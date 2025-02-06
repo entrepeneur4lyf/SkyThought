@@ -150,6 +150,14 @@ def inference(llm, conversations, max_tokens, temp, args):
     return responses
 
 
+def load_existing_results(result_file):
+    if not os.path.exists(result_file):
+        return {}
+    with open(result_file, "r", encoding="utf-8") as f:
+        records = json.load(f)
+    return records
+
+
 def perform_inference_and_check(
     handler: TaskHandler,
     temperatures,
@@ -159,7 +167,7 @@ def perform_inference_and_check(
     model_config,
     args,
 ):
-    results = handler.load_existing_results(result_file)
+    results = load_existing_results(result_file)
     print(f"Loaded {len(results)} existing results.")
     train_data = handler.load_and_filter_dataset(
         args.start,
@@ -170,6 +178,9 @@ def perform_inference_and_check(
         args=args,
     )
     remaining_data = handler.process_remaining_data(train_data, results)
+    if not len(remaining_data):
+        print("All results saved. Exiting....")
+        return
     conversations = handler.make_conversations(
         remaining_data, model_config.system_prompt, model_config.user_template
     )
@@ -229,7 +240,9 @@ def perform_inference_and_check(
                     prompt = conversations[idx][1]["content"]
                     results[problem_key]["prompt"] = prompt
                     results[problem_key]["input_conversation"] = conversations[idx]
-                    temperature_to_scores[temp][idx] = [0 for _ in range(args.n)]
+                    temperature_to_scores[temp][problem_key] = [
+                        0 for _ in range(args.n)
+                    ]
 
                 if str(temp) not in results[problem_key]["responses"]:
                     results[problem_key]["responses"][str(temp)] = [
@@ -244,7 +257,7 @@ def perform_inference_and_check(
                     results[problem_key]["token_usages"][str(temp)] = token_usages[idx]
 
                 # update scores
-                temperature_to_scores[temp][idx][sample_idx] = response_entry[
+                temperature_to_scores[temp][problem_key][sample_idx] = response_entry[
                     "correctness"
                 ]
 
@@ -310,7 +323,7 @@ def perform_inference_and_check(
 
 
 def perform_check(handler: TaskHandler, temperatures, result_file, args):
-    results = handler.load_existing_results(result_file)
+    results = load_existing_results(result_file)
     print(f"Loaded {len(results)} existing results.")
 
     train_data = handler.load_and_filter_dataset(
@@ -412,7 +425,7 @@ def perform_inference_and_save(
     model_config,
     args,
 ):
-    results = handler.load_existing_results(result_file)
+    results = load_existing_results(result_file)
     print(f"Loaded {len(results)} existing results.")
     train_data = handler.load_and_filter_dataset(
         args.start,
@@ -423,6 +436,9 @@ def perform_inference_and_save(
         args=args,
     )
     remaining_data = handler.process_remaining_data(train_data, results)
+    if not len(remaining_data):
+        print("All results saved. Exiting...")
+        return
     conversations = handler.make_conversations(
         remaining_data, model_config.system_prompt, model_config.user_template
     )
@@ -651,7 +667,7 @@ def main():
         os.makedirs(args.result_dir)
     temperature_str = ",".join(map(str, temperatures))
     file_suffix = f"{model_config.name}_{args.task}_{args.split}_subset_{args.subset}_filter_{args.filter_difficulty}"
-    f"_s{args.start}_e{args.end}_t{temperature_str}"
+    f"_s{args.start}_e{args.end}_t{temperature_str}_n{args.n}"
     if (
         args.math_difficulty_lower_bound is not None
         or args.math_difficulty_upper_bound is not None
