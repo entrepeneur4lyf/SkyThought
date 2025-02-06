@@ -80,4 +80,4 @@ We've noticed that it can be hard to reproduce results in reasoning benchmarks. 
 - Long context generations: Errors can accumulate so that the output changes at 1k+ tokens, which compound as you keep generating. Since we typically set max tokens to be 16k or 32k tokens, the final solution will change significantly
 - vLLM settings:  With vLLM, we’ve also noticed that at half-precision, different batch sizes can affect downstream evaluation results by a few percentage points. Further, different tensor parallelism settings can also change results in half-precision.
 
- We recommend to run all evaluation benchmarks at full precision, i.e float32 to avoid this.  By default, we run evaluation in `float32`, which can be customized with the `--dtype` flag. In full-precision, evaluation results should be robust to chanes in batch size, tensor parallel size, etc. 
+ We recommend to run all evaluation benchmarks at full precision, i.e float32 to avoid this.  By default, we run evaluation in `float32`, which can be customized with the `--dtype` flag. In full-precision, evaluation results should be robust to changes in batch size, tensor parallel size, etc. 
