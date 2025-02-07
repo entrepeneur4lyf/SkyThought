@@ -101,8 +101,8 @@ def _parse_response_for_idx(
     response_entry = SingleParsedResponse(content=content)
 
     token_usage_for_response = {
-            "completion_tokens": response.num_completion_tokens[sample_idx],
-            "prompt_tokens": response.num_input_tokens,
+        "completion_tokens": response.num_completion_tokens[sample_idx],
+        "prompt_tokens": response.num_input_tokens,
     }
     return response_entry, token_usage_for_response
 
