@@ -1,6 +1,7 @@
 import logging
 import math
 from collections import defaultdict
+
 import numpy as np
 
 
@@ -11,7 +12,7 @@ def pass_at_k(N, temp_to_scores):
     for temp in temp_to_scores:
         scores = temp_to_scores[temp]  # dict mapping idx -> list of scores
         final_passk_scores = {}
-        k_to_passk_scores = defaultdict(list) # k -> list of scores
+        k_to_passk_scores = defaultdict(list)  # k -> list of scores
         for _, sample_scores in scores.items():
             k = N
             while k > 0:
@@ -20,7 +21,7 @@ def pass_at_k(N, temp_to_scores):
                 pass_k = 1 - (math.comb(N - num_correct, k) / math.comb(N, k))
                 k_to_passk_scores[k].append(pass_k)
                 k = k // 2
-        
+
         for k in k_to_passk_scores:
             final_passk_scores[f"{k=}"] = round(np.mean(k_to_passk_scores[k]) * 100, 3)
 

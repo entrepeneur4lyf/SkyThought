@@ -237,7 +237,7 @@ def perform_inference_and_check(
                         results[problem_key]["messages"] = ""
                     results[problem_key]["responses"] = {}
                     results[problem_key]["token_usages"] = {}
-                    prompt = conversations[idx][1]["content"]
+                    prompt = conversations[idx][-1]["content"]
                     results[problem_key]["prompt"] = prompt
                     results[problem_key]["input_conversation"] = conversations[idx]
                     temperature_to_scores[temp][problem_key] = [
@@ -477,7 +477,7 @@ def perform_inference_and_save(
                     results[problem_key]["messages"] = ""
                 results[problem_key]["responses"] = {}
                 results[problem_key]["token_usages"] = {}
-                prompt = conversations[idx][1]["content"]
+                prompt = conversations[idx][-1]["content"]
                 results[problem_key]["prompt"] = prompt
 
             results[problem_key]["responses"][str(temp)] = response_entries
