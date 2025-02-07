@@ -1,11 +1,21 @@
+from typing import Dict, Any
 import logging
 import math
 from collections import defaultdict
 
 import numpy as np
 
+def _pass_at_k(n, c, k): 
+  """ 
+  :param n: total number of samples 
+  :param c: number of correct samples 
+  :param k: k in pass@$k$ 
+  """ 
+  if n - c < k: 
+    return 1.0 
+  return 1.0 - np.prod(1.0 - k / np.arange(n - c + 1, n + 1))
 
-def pass_at_k(N, temp_to_scores):
+def pass_at_k(N: int, temp_to_scores: Dict[str, Dict[str, Any]]):
     # pass at k per temperature
     # scores = list(correct[temp].values())
     pass_values = {}  # temp -> value
@@ -18,7 +28,7 @@ def pass_at_k(N, temp_to_scores):
             while k > 0:
                 # calculate pass @ k
                 num_correct = np.sum(sample_scores)
-                pass_k = 1 - (math.comb(N - num_correct, k) / math.comb(N, k))
+                pass_k = _pass_at_k(N, num_correct, k)
                 k_to_passk_scores[k].append(pass_k)
                 k = k // 2
 

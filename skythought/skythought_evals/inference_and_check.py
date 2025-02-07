@@ -43,7 +43,7 @@ class NumpyEncoder(json.JSONEncoder):
         return super().default(obj)
 
 
-def fetch_response_openai(llm, model_name, max_tokens, temp, prompt):
+def fetch_response_openai(llm, model_name, max_tokens, temp, num_responses, prompt):
     model_name = model_name.replace("openai/", "")
     if "o1" in model_name:
         # O1 doesn't support system prompt
@@ -54,7 +54,7 @@ def fetch_response_openai(llm, model_name, max_tokens, temp, prompt):
         response = llm.chat.completions.create(
             model=model_name,
             messages=prompt,
-            n=1,
+            n=num_responses,
             temperature=1,  # has to be 1
             max_completion_tokens=max_tokens,
         )
@@ -62,7 +62,7 @@ def fetch_response_openai(llm, model_name, max_tokens, temp, prompt):
         response = llm.chat.completions.create(
             model=model_name,
             messages=prompt,
-            n=1,
+            n=num_responses,
             temperature=temp,
             max_tokens=max_tokens,
         )
@@ -97,23 +97,13 @@ def fetch_responses_ray(conversations, max_tokens, temp, args):
 def _parse_response_for_idx(
     response: Response, sample_idx: int, args
 ) -> Tuple[SingleParsedResponse, Dict[str, int]]:
-    if args.model.startswith("openai"):
-        content = response.response.strip()
-    else:
-        content = response.response[sample_idx].strip()
+    content = response.response[sample_idx].strip()
     response_entry = SingleParsedResponse(content=content)
 
-    if args.model.startswith("openai"):
-        token_usage_for_response = {
-            "completion_tokens": response.num_completion_tokens,
-            "prompt_tokens": response.num_input_tokens,
-        }
-
-    else:
-        token_usage_for_response = {
+    token_usage_for_response = {
             "completion_tokens": response.num_completion_tokens[sample_idx],
             "prompt_tokens": response.num_input_tokens,
-        }
+    }
     return response_entry, token_usage_for_response
 
 
@@ -129,9 +119,8 @@ def inference(llm, conversations, max_tokens, temp, args):
         responses = copy.deepcopy(responses)
         responses = sorted(responses, key=lambda x: x.index)
     elif args.model.startswith("openai"):
-        assert args.n == 1, "openai models don't support n > 1"
         fetch_partial = partial(
-            fetch_response_openai, llm, args.model, max_tokens, temp
+            fetch_response_openai, llm, args.model, max_tokens, temp, args.n
         )
 
         with concurrent.futures.ThreadPoolExecutor(max_workers=16) as e:

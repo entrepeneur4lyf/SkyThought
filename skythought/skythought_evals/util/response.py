@@ -49,10 +49,9 @@ class Response:
         Returns:
             Responses: New instance initialized with OpenAI response data
         """
-        # TODO: allow for multiple samples
         return cls(
-            response=response.choices[0].message.content,
-            num_completion_tokens=response.usage.completion_tokens,
+            response=[response.choices[i].message.content for i in range(len(response.choices))],
+            num_completion_tokens=[response.usage.completion_tokens if i == 0 else 0 for i in range(len(response.choices))],
             num_input_tokens=response.usage.prompt_tokens,
         )
 
