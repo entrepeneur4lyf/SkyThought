@@ -46,7 +46,23 @@ python -m skythought_evals.inference_and_check --task math500 --model Qwen/Qwen2
 
 By default, we make use of the configuration in [ray_configs/ray_config.yaml](./ray_configs/ray_config.yaml). You can also customize this with `--ray-config /path/to/ray_config.yaml`. 
 
-#### Best-of-N Evaluation
+### Optimized settings for 32B and 7B models
+
+The following are optimized settings on a 8xH100 or a 8xA100 node. 
+
+For 32B models, we recommend using `--use-ray` and the default ray configuration for best performance. 
+
+For 7B models, we recommend adding `--ray-config-tensor-parallel-size 1` and `--ray-config-num-replicas 8` for best performance. FOr example, the previous command will change to:
+
+```shell
+python -m skythought_evals.inference_and_check --task math500 --model Qwen/Qwen2-7B-Instruct --max_tokens 4096 --split test --result-dir ./ --temperatures 0.7 --use-ray --ray-config-tensor-parallel-size 1 --ray-config-num-replicas 8
+```
+
+#### Multi-node inference
+
+Note that if you have a ray cluster setup, you can scale the number of replicas as needed with `--ray-config-num-replicas` to make full use of your cluster. Make sure to execute the script on the head node and ensure that `--result-dir` is a valid directory that the head node can write to. 
+
+### Best-of-N Evaluation
 
 While we are actively working on a better CLI interface, you can use `-m skythought_evals.inference_and_check` for Best-of-N evaluation. 
 

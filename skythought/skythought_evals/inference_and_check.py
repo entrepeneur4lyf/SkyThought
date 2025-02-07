@@ -16,7 +16,7 @@ from skythought_evals.batch import Pipeline, init_engine_from_config
 from skythought_evals.batch.env_config import EnvConfig
 from skythought_evals.batch.workload import EvalWorkload
 from skythought_evals.batch.workload import (
-    load_config_from_path as load_rayllm_config_from_path,
+    load_config_from_path as load_ray_config_from_path,
 )
 from skythought_evals.models import ModelConfig, get_system_prompt_keys
 from skythought_evals.tasks import (
@@ -70,10 +70,19 @@ def fetch_response_openai(llm, model_name, max_tokens, temp, num_responses, prom
 
 
 def fetch_responses_ray(conversations, max_tokens, temp, args):
-    config = load_rayllm_config_from_path(args.ray_config)
+    config = load_ray_config_from_path(args.ray_config)
     config["model_id"] = args.model
     # use user-provided dtype from CLI
     config["engine_kwargs"]["dtype"] = args.dtype
+    # use overrides if provided
+    if args.ray_config_tensor_parallel_size:
+        config["engine_kwargs"][
+            "tensor_parallel_size"
+        ] = args.ray_config_tensor_parallel_size
+
+    if args.ray_config_num_replicas:
+        config["env_config"]["num_replicas"] = args.ray_config_num_replicas
+
     engine_cfg = init_engine_from_config(config)
     ds = ray.data.from_items([(idx, conv) for idx, conv in enumerate(conversations)])
     num_replicas = config["env_config"].get("num_replicas", 1)
@@ -601,6 +610,18 @@ def main():
         help="Ray configuration file if using ray for scaling inference. By default, we use the example in ray_configs/ray_config.yaml",
     )
     parser.add_argument(
+        "--ray-config-tensor-parallel-size",
+        type=int,
+        default=None,
+        help="Ray configuration override for tensor parallel size per model replica",
+    )
+    parser.add_argument(
+        "--ray-config-num-replicas",
+        type=int,
+        default=None,
+        help="Ray configuration override for number of model replicas",
+    )
+    parser.add_argument(
         "--dtype",
         type=str,
         choices=["float32", "auto", "float16", "bfloat16"],
@@ -612,7 +633,8 @@ def main():
     # load ray config
     if args.use_ray:
         warnings.warn(
-            "`tp` CLI argument is not compatible with `use-ray` and will be ignored. Please configure tensor parallel size in the `ray_config` YAML",
+            "`tp` CLI argument is not compatible with `use-ray` and will be ignored. Please configure tensor parallel size in the `ray_config` YAML"
+            " or override the value with the argument `ray-config-tensor-parallel-size` ",
             stacklevel=1,
         )
         if not args.ray_config:
