@@ -464,7 +464,7 @@ def perform_inference_and_save(
                 )
                 token_usages.append(token_usage_for_response)
                 completion_token += token_usage_for_response["completion_tokens"]
-                response_entries.append(response_entry)
+                response_entries.append(response_entry.to_dict())
 
             completion_token /= args.n
             prompt_token = response.num_input_tokens
