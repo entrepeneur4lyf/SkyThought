@@ -92,7 +92,12 @@ def fetch_responses_ray(conversations, max_tokens, temp, args):
         ds = ds.repartition(num_partitions=num_replicas)
     workload = EvalWorkload(
         dataset=ds,
-        sampling_params={"n": args.n, "max_tokens": max_tokens, "temperature": temp},
+        sampling_params={
+            "n": args.n,
+            "max_tokens": max_tokens,
+            "temperature": temp,
+            "top_p": args.top_p,
+        },
     )
     pipeline = Pipeline(
         engine_cfg,
@@ -138,7 +143,7 @@ def inference(llm, conversations, max_tokens, temp, args):
         responses = [Response.from_openai_response(response) for response in responses]
     else:
         sampling_params = SamplingParams(
-            max_tokens=max_tokens, temperature=temp, n=args.n
+            max_tokens=max_tokens, temperature=temp, n=args.n, top_p=args.top_p
         )
         responses = llm.chat(
             messages=conversations, sampling_params=sampling_params, use_tqdm=True
@@ -629,6 +634,12 @@ def main():
         "'auto' refers to automatically inferring dtype for the model",
         default="float32",
     )
+    parser.add_argument(
+        "--top_p",
+        type=float,
+        default=1,
+        help="Sampling parameter `top_p`",
+    )
     args = parser.parse_args()
     # load ray config
     if args.use_ray:
@@ -659,6 +670,12 @@ def main():
     model_config = ModelConfig.from_model_id(args.model, args.system_prompt_template)
 
     temperatures = [1] if args.model.startswith("openai/o1") else args.temperatures
+
+    if args.top_p < 1 and args.model.startswith("openai/o1"):
+        print(
+            "OpenAI o1 models do not support `top_p` sampling. Resetting `top_p` to 1"
+        )
+        args.top_p = 1
 
     print(f"Temperature: {temperatures}")
     max_tokens = args.max_tokens
