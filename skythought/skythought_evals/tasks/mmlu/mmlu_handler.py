@@ -73,7 +73,7 @@ class MMLUTaskHandler(TaskHandler):
         ]
 
     def load_and_filter_dataset(
-        self, start, end, split=None, subset=None, difficulty=None, args=None
+        self, start, end, split=None, subset=None, difficulty=None
     ):
         dataset = self.load_dataset(subset=subset, split=split).to_pandas()
         return dataset.iloc[start:end] if end > 0 else dataset.iloc[start:]
@@ -117,7 +117,7 @@ class MMLUProTaskHandler(MMLUTaskHandler):
         return f"Answer Choices: {options}"
 
     def load_and_filter_dataset(
-        self, start, end, split=None, subset=None, difficulty=None, args=None
+        self, start, end, split=None, subset=None, difficulty=None
     ):
         dataset = self.load_dataset(subset=subset, split=split).to_pandas()
         return dataset.iloc[start:end] if end > 0 else dataset.iloc[start:]

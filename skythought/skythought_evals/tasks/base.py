@@ -101,16 +101,23 @@ class TaskHandler(ABC):
             path=self.task_config.dataset_path,
             name=subset if subset else self.task_config.dataset_subset,
             split=split if split else self.task_config.dataset_split,
-            **self.task_config.dataset_kwargs
+            **self.task_config.dataset_kwargs,
         )
+        # add an index column efficiently with map
+        dataset = dataset.map(add_idx_map, with_indices=True)
         return dataset
 
     @abstractmethod
     def load_and_filter_dataset(
-        self, start, end, split=None, subset=None, difficulty=None, args=None
+        self, start, end, split=None, subset=None, difficulty=None
     ):
         pass
 
     @abstractmethod
     def process_remaining_data(self, train_data, results):
         pass
+
+
+def add_idx_map(x: dict, idx: int) -> dict:
+    x["_index"] = idx
+    return x

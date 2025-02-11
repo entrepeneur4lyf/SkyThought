@@ -104,7 +104,7 @@ class LiveCodeBenchTaskHandler(TaskHandler):
         return conversations
 
     def load_and_filter_dataset(
-        self, start, end, split=None, subset=None, difficulty=None, args=None
+        self, start, end, split=None, subset=None, difficulty=None
     ):
         dataset: HFDataset = self.load_dataset(subset=subset, split=split)
         # Filter by CLI or config

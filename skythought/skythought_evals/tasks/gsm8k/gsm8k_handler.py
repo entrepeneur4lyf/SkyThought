@@ -60,7 +60,7 @@ class GSM8KTaskHandler(TaskHandler):
         return conversations
 
     def load_and_filter_dataset(
-        self, start, end, split=None, subset=None, difficulty=None, args=None
+        self, start, end, split=None, subset=None, difficulty=None
     ):
         train_data = self.load_dataset(subset=subset, split=split).to_pandas()
         return train_data.iloc[start:end] if end > 0 else train_data.iloc[start:]
