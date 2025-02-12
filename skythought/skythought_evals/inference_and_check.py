@@ -202,7 +202,7 @@ def generate_and_score(
     backend: Backend,
     backend_params: BackendParameters,
     sampling_params: SamplingParameters,
-    output_dir: str,
+    output_dir: Path,
     start: int,
     end: int,
     run_config_dict: dict,
@@ -315,7 +315,7 @@ def generate_and_score(
     num_responses_total = len(responses) * sampling_params.params.n
 
     # Run summary
-    summary_file = os.path.join(output_dir, "summary.json")
+    summary_file = output_dir / "summary.json"
 
     # Prepare the summary dictionary
     summary_dict = {
@@ -341,12 +341,12 @@ def generate_and_score(
         json.dump(summary_dict, f, indent=4)
 
     print(f"Summary saved to {summary_file}")
-    result_file = os.path.join(output_dir, "results.json")
+    result_file = output_dir / "results.json"
     with open(result_file, "w", encoding="utf-8") as file:
         json.dump(id_to_results, file, ensure_ascii=False, indent=4, cls=NumpyEncoder)
 
 
-def score_results(handler: TaskHandler, run_dir: Path, task: str, run_summary: dict):
+def score_results(handler: TaskHandler, run_dir: Path, run_summary: dict):
     result_file = run_dir / "results.json"
     results = load_existing_results(result_file)
     print(f"Loaded {len(results)} existing results.")
@@ -489,8 +489,8 @@ def generate_and_save(
 
         results[unique_id]["token_usages"] = token_usages
 
-    # Prepare the token usage dictionary
-    metrics_dict = {
+    # Prepare the summary dictionary
+    summary_dict = {
         "configuration": run_config_dict,
         "completion_tokens": sum(completion_tokens),
         "prompt_tokens": sum(prompt_tokens),
@@ -504,9 +504,9 @@ def generate_and_save(
         ),
     }
 
-    # Save the usage dictionary to the result file
+    # Save the summary dictionary to the result file
     with open(summary_file, "w") as f:
-        json.dump(metrics_dict, f, indent=4)
+        json.dump(summary_dict, f, indent=4)
 
     print(f"Summary saved to {summary_file}")
 

@@ -149,9 +149,6 @@ def get_output_dir(
     end: int,
     run_config: dict,
 ) -> Path:
-    # name -> model_config.name_task_{parameter_hash}
-    # ge ta single has for all the remaining parameters - backend, backend_args, sampling_params
-    # hash with hashlib
     parameter_hash = get_deterministic_hash(run_config)
 
     return (
@@ -167,9 +164,6 @@ def evaluate(
         str, typer.Option(..., help="Task to process.", case_sensitive=False)
     ],
     model: Annotated[str, typer.Option(..., help="The model to run")],
-    # tp: int = typer.Option(8, help="Tensor Parallelism Degree"),
-    # max_tokens: int = typer.Option(32768, help="Max tokens for the model."),
-    # subset: Annotated[str, typer.Option(None, help="Subset for the dataset.")],
     backend: Annotated[
         Backend,
         typer.Option(
@@ -314,21 +308,6 @@ def evaluate(
         run_config_dict,
         batch_size=batch_size,
     )
-
-
-#  if check:
-#         check if converted file exists
-#         if (
-#             math_difficulty_lower_bound is not None
-#             or math_difficulty_upper_bound is not None
-#         ):
-#             converted_file = f"{result_dir}/converted_{file_suffix}.json"
-#         else:
-#             converted_file = f"{result_dir}/converted_{file_suffix}.json"
-#         if os.path.exists(converted_file):
-#             result_file = converted_file
-#         perform_check(handler, temperature, result_file, args)
-#         return
 
 
 @app.command("generate", help="Generate model response for a task and save results")
