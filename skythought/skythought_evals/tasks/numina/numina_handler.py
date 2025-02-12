@@ -1,4 +1,4 @@
-from typing import Any, Dict, List, Optional
+from typing import Any, Dict
 
 from datasets import load_dataset
 from skythought_evals.util.common import TimeoutException, timeout
@@ -13,7 +13,8 @@ from ..base import TaskHandler
 
 class NUMINATaskHandler(TaskHandler):
 
-    def generate_prompt(self, prompt):
+    def generate_prompt(self, problem: Dict[str, Any]):
+        prompt = problem["problem"]
         return self.task_config.templating_parameters["template"].format(prompt=prompt)
 
     @timeout(5)  # Add timeout of 5 seconds
@@ -58,24 +59,6 @@ class NUMINATaskHandler(TaskHandler):
             # print(example)
             diff_dict[example["problem"]] = example["gpt_difficulty_parsed"]
         return diff_dict
-
-    def make_conversations(
-        self,
-        data: List[Dict[str, Any]],
-        system_prompt: Optional[str] = None,
-        user_template: Optional[str] = None,
-    ):
-        conversations = []
-        for problem in data:
-            prompt_text = self.generate_prompt(problem["problem"])
-            conversations.append(
-                self.make_conversation_from_contents(
-                    [prompt_text],
-                    system_prompt=system_prompt,
-                    user_template=user_template,
-                )
-            )
-        return conversations
 
     def load_and_filter_dataset(
         self, start, end, split=None, subset=None, difficulty=None

@@ -96,12 +96,6 @@ def fetch_responses_ray(
         config["env_config"]["batch_size"] = math.ceil(ds.count() / num_replicas)
     if num_replicas > 1 and num_replicas > ds.num_blocks():
         ds = ds.repartition(num_partitions=num_replicas)
-    # {
-    #     "n": args.n,
-    #     "max_tokens": max_tokens,
-    #     "temperature": temp,
-    #     "top_p": args.top_p,
-    # }
     workload = EvalWorkload(
         dataset=ds,
         sampling_params=sampling_params.to_dict(),
@@ -173,6 +167,8 @@ def inference(
                 messages=conversations[i : i + batch_size],
                 sampling_params=sampling_params.params,
                 use_tqdm=True,
+                add_generation_prompt=model_config.assistant_prefill is None,
+                continue_final_message=model_config.assistant_prefill is not None,
             )
             for i in range(0, len(conversations), batch_size)
         ]
@@ -274,7 +270,7 @@ def generate_and_score(
                     id_to_results[unique_id]["messages"] = ""
                 id_to_results[unique_id]["responses"] = []
                 id_to_results[unique_id]["token_usages"] = []
-                prompt = conversations[idx][-1]["content"]
+                prompt = conversations[idx][1]["content"]
                 id_to_results[unique_id]["prompt"] = prompt
                 id_to_results[unique_id]["input_conversation"] = conversations[idx]
                 id_to_scores[unique_id] = [0 for _ in range(sampling_params.params.n)]
@@ -482,7 +478,7 @@ def generate_and_save(
             results[unique_id] = remaining_data[idx]
             if isinstance(handler, NUMINATaskHandler):
                 results[unique_id]["messages"] = ""
-            prompt = conversations[idx][-1]["content"]
+            prompt = conversations[idx][1]["content"]
             results[unique_id]["prompt"] = prompt
 
         results[unique_id]["responses"] = response_entries

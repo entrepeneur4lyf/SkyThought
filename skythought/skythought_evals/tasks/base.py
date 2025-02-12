@@ -19,9 +19,9 @@ class TaskConfig(BaseModel):
     # Optional answer key for datasets with a single correct answer
     answer_key: Optional[str] = None
     templating_parameters: Dict[str, str] = Field(default_factory=dict)
-    # Optional, unused for now
-    fewshot_config: List[Dict[str, Any]] = Field(default_factory=list)
-    num_fewshot: int = 0
+    # Example fields
+    # fewshot_config: List[Dict[str, Any]] = Field(default_factory=list)
+    # num_fewshot: int = 0
 
     preprocess_config: Dict[str, Any] = Field(default_factory=dict)
 
@@ -65,40 +65,20 @@ class TaskHandler(ABC):
         data: List[Dict[str, Any]],
         system_prompt: Optional[str] = None,
         user_template: Optional[str] = None,
+        assistant_prefill: Optional[str] = None,
     ) -> List[ConversationType]:
-        raise NotImplementedError("Subclasses should implement this method.")
-
-    def make_conversation_from_contents(
-        self,
-        contents: List[str],
-        system_prompt: Optional[str] = None,
-        user_template: Optional[str] = None,
-    ) -> ConversationType:
-        """Makes a conversation given a list of user/assistant message strings.
-
-        If system_prompt is provided, it will be added as the first message.
-        If user_template is provided, it will be used to format the user messages. This is useful for model-specific formatting.
-
-        Args:
-            content: A list of user/assistant message strings.
-            system_prompt: An optional string for the system prompt.
-            user_template: An optional string for the user template.
-
-        Returns:
-            A list of dictionaries representing the conversation.
-        """
-
-        conversation = []
-        if system_prompt:
-            conversation.append({"role": "system", "content": system_prompt})
-
-        for i, content in enumerate(contents):
-            if i % 2 == 0:
-                content = user_template.format(content) if user_template else content
-                conversation.append({"role": "user", "content": content})
-            else:
-                conversation.append({"role": "assistant", "content": content})
-        return conversation
+        conversations = []
+        for _, problem in enumerate(data):
+            prompt_text = self.generate_prompt(problem)
+            conversations.append(
+                make_conversation_from_contents(
+                    [prompt_text],
+                    system_prompt=system_prompt,
+                    user_template=user_template,
+                    assistant_prefill=assistant_prefill,
+                )
+            )
+        return conversations
 
     def load_dataset(self, subset=None, split=None, **kwargs) -> HFDataset:
         dataset = load_dataset(
@@ -128,3 +108,40 @@ class TaskHandler(ABC):
 def add_idx_map(x: dict, idx: int) -> dict:
     x["_index"] = str(idx)
     return x
+
+
+def make_conversation_from_contents(
+    contents: List[str],
+    system_prompt: Optional[str] = None,
+    user_template: Optional[str] = None,
+    assistant_prefill: Optional[str] = None,
+) -> ConversationType:
+    """Makes a conversation given a list of user/assistant message strings.
+
+    If system_prompt is provided, it will be added as the first message.
+    If user_template is provided, it will be used to format the user messages. This is useful for model-specific formatting.
+
+    Args:
+        content: A list of user/assistant message strings.
+        system_prompt: An optional string for the system prompt.
+        user_template: An optional string for the user template.
+
+    Returns:
+        A list of dictionaries representing the conversation.
+    """
+
+    conversation = []
+    if system_prompt:
+        conversation.append({"role": "system", "content": system_prompt})
+
+    for i, content in enumerate(contents):
+        if i % 2 == 0:
+            content = user_template.format(content) if user_template else content
+            conversation.append({"role": "user", "content": content})
+        else:
+            conversation.append({"role": "assistant", "content": content})
+
+    if assistant_prefill and conversation[-1]["role"] == "user":
+        conversation.append({"role": "assistant", "content": assistant_prefill})
+
+    return conversation

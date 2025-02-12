@@ -40,6 +40,7 @@ class ModelConfig(BaseModel):
     # can be a string or a path to a file with the string
     system_prompt: Optional[Union[str, StringInFile]] = None
     user_template: Optional[Union[str, StringInFile]] = None
+    assistant_prefill: Optional[str] = None
 
     @model_validator(mode="after")
     def validate_name(self):

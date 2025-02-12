@@ -1,5 +1,4 @@
 import random
-from typing import Any, Dict, List, Optional
 
 from skythought_evals.util.math_parsing_util import get_multiple_choice_answer
 
@@ -9,7 +8,14 @@ from ..base import TaskHandler
 class GPQADiamondTaskHandler(TaskHandler):
 
     def generate_prompt(self, problem):
-        return self.task_config.templating_parameters["template"].format(**problem)
+        multiple_choice_string, correct_answer_letter = (
+            self.get_multiple_choice_answers(problem)
+        )
+        problem["Answer"] = correct_answer_letter
+        problem["prompt"] = problem["Question"] + "\n" + multiple_choice_string
+        return self.task_config.templating_parameters["template"].format(
+            prompt=problem["prompt"]
+        )
 
     def update_results(self, problem, response):
         # Initialize the response structure
@@ -61,30 +67,6 @@ class GPQADiamondTaskHandler(TaskHandler):
         )
 
         return multiple_choice_string, correct_answer_letter
-
-    def make_conversations(
-        self,
-        data: List[Dict[str, Any]],
-        system_prompt: Optional[str] = None,
-        user_template: Optional[str] = None,
-    ):
-        conversations = []
-        for problem in data:
-            (
-                multiple_choice_string,
-                correct_answer_letter,
-            ) = self.get_multiple_choice_answers(problem)
-            problem["Answer"] = correct_answer_letter
-            problem["prompt"] = problem["Question"] + "\n" + multiple_choice_string
-            prompt_text = self.generate_prompt(problem)
-            conversations.append(
-                self.make_conversation_from_contents(
-                    [prompt_text],
-                    system_prompt=system_prompt,
-                    user_template=user_template,
-                )
-            )
-        return conversations
 
     def load_and_filter_dataset(
         self, start, end, split=None, subset=None, difficulty=None
