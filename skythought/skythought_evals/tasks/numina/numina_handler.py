@@ -25,8 +25,6 @@ class NUMINATaskHandler(TaskHandler):
         return math_equal(pred, solution)
 
     def update_results(self, problem, response):
-        if not isinstance(response, str):
-            response = response.outputs[0].text.strip()
         # Initialize the response structure
         response_entry = {
             "content": response,
@@ -104,10 +102,3 @@ class NUMINATaskHandler(TaskHandler):
             ]
 
         return dataset
-
-    def process_remaining_data(self, train_data, results):
-        return [
-            row.to_dict()
-            for _, row in train_data.iterrows()
-            if str(row["problem"]) not in results
-        ]

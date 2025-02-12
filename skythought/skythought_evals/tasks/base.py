@@ -31,6 +31,10 @@ class TaskConfig(BaseModel):
             config_dict = yaml.safe_load(f)
         return cls(**config_dict)
 
+    def update(self, **kwargs):
+        for key, value in kwargs.items():
+            setattr(self, key, value)
+
 
 class TaskHandler(ABC):
 
@@ -53,7 +57,7 @@ class TaskHandler(ABC):
         pass
 
     @abstractmethod
-    def update_results(self, problem: Dict[str, Any], response: Dict[str, Any]):
+    def update_results(self, problem: Dict[str, Any], response: str):
         pass
 
     def make_conversations(
@@ -113,11 +117,14 @@ class TaskHandler(ABC):
     ):
         pass
 
-    @abstractmethod
-    def process_remaining_data(self, train_data, results):
-        pass
+    def process_remaining_data(self, train_data, results: dict):
+        return [
+            row.to_dict()
+            for _, row in train_data.iterrows()
+            if str(row["_index"]) not in results
+        ]
 
 
 def add_idx_map(x: dict, idx: int) -> dict:
-    x["_index"] = idx
+    x["_index"] = str(idx)
     return x

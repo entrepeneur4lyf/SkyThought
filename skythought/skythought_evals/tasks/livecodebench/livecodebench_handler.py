@@ -53,8 +53,6 @@ class LiveCodeBenchTaskHandler(TaskHandler):
         return result == "passed"
 
     def update_results(self, problem, response):
-        if not isinstance(response, str):
-            response = response.outputs[0].text.strip()
         # Initialize the response structure
         response_entry = {
             "content": response,
@@ -132,10 +130,3 @@ class LiveCodeBenchTaskHandler(TaskHandler):
             map_to_example, remove_columns=dataset.column_names, writer_batch_size=100
         ).to_pandas()
         return dataset.iloc[start:end] if end > 0 else dataset.iloc[start:]
-
-    def process_remaining_data(self, train_data, results):
-        return [
-            row.to_dict()
-            for _, row in train_data.iterrows()
-            if str(row[self.question_key]) not in results
-        ]

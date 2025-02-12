@@ -3,7 +3,7 @@ name = "skythought"
 version = "0.1.0"
 description = "Skythought Evals"
 authors = [
-    { name = "Skythought", email = "hello@skythought.ai" }
+    { name = "NovaSky Team"}
 ]
 requires-python = ">=3.9,<3.12"  # Added from setup.py
 dependencies = [

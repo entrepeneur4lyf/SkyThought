@@ -19,8 +19,6 @@ class MMLUTaskHandler(TaskHandler):
         return answer == pred
 
     def update_results(self, problem, response):
-        if not isinstance(response, str):
-            response = response.outputs[0].text.strip()
         # Initialize the response structure
         response_entry = {
             "content": response,
@@ -64,13 +62,6 @@ class MMLUTaskHandler(TaskHandler):
                 )
             )
         return conversations
-
-    def process_remaining_data(self, train_data, results):
-        return [
-            row.to_dict()
-            for _, row in train_data.iterrows()
-            if str(row["question"]) not in results
-        ]
 
     def load_and_filter_dataset(
         self, start, end, split=None, subset=None, difficulty=None

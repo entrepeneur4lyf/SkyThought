@@ -1,11 +1,13 @@
 import concurrent.futures
 import copy
 import json
+import logging
 import math
 import os
 import sys
 from concurrent.futures import ProcessPoolExecutor, as_completed
 from functools import partial
+from pathlib import Path
 from typing import Any, Dict, List, Tuple
 
 import numpy as np
@@ -30,6 +32,7 @@ from skythought_evals.util.response import Response, SingleParsedResponse
 from tqdm import tqdm
 from vllm import LLM
 
+logger = logging.getLogger(__name__)
 module_dir = os.path.dirname(os.path.abspath(__file__))
 DEFAULT_RAY_CONFIG_RELATIVE_PATH = "ray_configs/ray_config.yaml"
 
@@ -210,7 +213,7 @@ def generate_and_score(
     output_dir: str,
     start: int,
     end: int,
-    run_configuration: dict,
+    run_config_dict: dict,
     **kwargs,
 ):
     eval_data = handler.load_and_filter_dataset(start, end).to_dict(orient="records")
@@ -324,7 +327,7 @@ def generate_and_score(
 
     # Prepare the summary dictionary
     summary_dict = {
-        "configuration": run_configuration,
+        "configuration": run_config_dict,
         "completion_tokens": total_completion_tokens,
         "prompt_tokens": total_prompt_tokens,
         "avg_completion_tokens": (
@@ -349,6 +352,72 @@ def generate_and_score(
     result_file = os.path.join(output_dir, "results.json")
     with open(result_file, "w", encoding="utf-8") as file:
         json.dump(id_to_results, file, ensure_ascii=False, indent=4, cls=NumpyEncoder)
+
+
+def score_results(handler: TaskHandler, run_dir: Path, task: str, run_summary: dict):
+    result_file = run_dir / "results.json"
+    results = load_existing_results(result_file)
+    print(f"Loaded {len(results)} existing results.")
+
+    total_correct = 0
+    total_finish = 0
+    id_to_scores = {}
+    num_generations_per_problem = len(results[list(results.keys())[0]]["responses"])
+
+    with ProcessPoolExecutor(max_workers=32) as executor:
+        future_to_task = {
+            executor.submit(
+                handler.update_results, result, result["responses"][i]["content"]
+            ): (
+                result,
+                i,
+                unique_id,
+            )
+            for unique_id, result in results.items()
+            for i in range(num_generations_per_problem)
+        }
+
+        # Collect results as they finish
+        for future in tqdm(
+            as_completed(future_to_task),
+            total=len(future_to_task),
+            desc="Scoring results",
+        ):
+            result, sample_idx, unique_id = future_to_task[future]
+            new_response_entry = future.result()
+            total_correct += new_response_entry["correctness"]
+            total_finish += 1
+
+            # Update the corresponding record in results
+            if unique_id not in id_to_scores:
+                id_to_scores[unique_id] = [0 for _ in range(len(result["responses"]))]
+
+            results[unique_id]["responses"][sample_idx]["correctness"] = (
+                new_response_entry["correctness"]
+            )
+            results[unique_id]["responses"][sample_idx]["reason"] = new_response_entry[
+                "reason"
+            ]
+            id_to_scores[unique_id][sample_idx] = new_response_entry["correctness"]
+
+    acc = round(total_correct / total_finish, 4) if total_finish > 0 else 0
+    print(f"Final reject-sampling accuracy: {acc}")
+
+    pass_at_k_metrics = None
+    if len(results) > 1:
+        pass_at_k_metrics = pass_at_k(num_generations_per_problem, id_to_scores)
+        print(json.dumps({"pass_at_k": pass_at_k_metrics}))
+
+    run_summary.update({"accuracy": acc, "pass_at_k": pass_at_k_metrics})
+    # save summary
+    summary_file = run_dir / "summary.json"
+    with open(summary_file, "w") as f:
+        json.dump(run_summary, f, indent=4)
+
+    with open(result_file, "w", encoding="utf-8") as file:
+        json.dump(results, file, ensure_ascii=False, indent=4, cls=NumpyEncoder)
+
+    logging.info(f"Saved results to {str(result_file)}")
 
 
 def perform_check(handler: TaskHandler, temperatures, result_file, args):
@@ -445,26 +514,36 @@ def perform_check(handler: TaskHandler, temperatures, result_file, args):
         json.dump(results, file, ensure_ascii=False, indent=4, cls=NumpyEncoder)
 
 
-def perform_inference_and_save(
+def generate_and_save(
     handler: TaskHandler,
-    temperatures,
-    max_tokens,
-    result_file,
-    llm,
-    model_config,
-    args,
+    model_config: ModelConfig,
+    backend: Backend,
+    backend_params: BackendParameters,
+    sampling_params: SamplingParameters,
+    output_dir: Path,
+    start: int,
+    end: int,
+    run_config_dict: dict,
+    resume_from: os.PathLike | None = None,
+    **kwargs,
 ):
-    results = load_existing_results(result_file)
-    print(f"Loaded {len(results)} existing results.")
-    train_data = handler.load_and_filter_dataset(
-        args.start,
-        args.end,
-        split=args.split,
-        subset=args.subset,
-        difficulty=args.difficulty,
-        args=args,
-    )
-    remaining_data = handler.process_remaining_data(train_data, results)
+    results = {}
+    if resume_from is not None:
+        resume_from = Path(resume_from)
+        result_file = resume_from / "results.json"
+        summary_file = resume_from / "summary.json"
+        results = load_existing_results(result_file)
+        print(f"Loaded {len(results)} existing results.")
+    else:
+        result_file = output_dir / "results.json"
+        summary_file = output_dir / "summary.json"
+
+    full_eval_data = handler.load_and_filter_dataset(start, end)
+    remaining_data = handler.process_remaining_data(full_eval_data, results)
+    print(f"Generating results for {len(remaining_data)} problems")
+
+    unique_ids = [remaining_data[i]["_index"] for i in range(len(remaining_data))]
+
     if not len(remaining_data):
         print("All results saved. Exiting...")
         return
@@ -472,58 +551,49 @@ def perform_inference_and_save(
         remaining_data, model_config.system_prompt, model_config.user_template
     )
 
-    for temp in temperatures:
-        if len(conversations) == 0:
-            print("No more data to process")
-            continue
-        responses = inference(llm, conversations, max_tokens, temp, args)
+    if len(conversations) == 0:
+        print("No more data to process")
+        return
 
-        completion_tokens = []
-        prompt_tokens = []
-        for idx, response in enumerate(responses):
-            response_entries = []
-            token_usages = []
-            completion_token = 0
-            for sample_idx in range(args.n):
-                response_entry, token_usage_for_response = _parse_response_for_idx(
-                    response,
-                    sample_idx,
-                )
-                token_usages.append(token_usage_for_response)
-                completion_token += token_usage_for_response["completion_tokens"]
-                response_entries.append(response_entry)
+    responses = inference(
+        conversations, backend, backend_params, model_config, sampling_params, **kwargs
+    )
 
-            completion_token /= args.n
-            prompt_token = response.num_input_tokens
-            prompt_tokens.append(prompt_token)
-            completion_tokens.append(completion_token)
+    completion_tokens = []
+    prompt_tokens = []
+    for idx, response in enumerate(responses):
+        response_entries = []
+        token_usages = []
+        completion_token = 0
+        for sample_idx in range(sampling_params.params.n):
+            response_entry, token_usage_for_response = _parse_response_for_idx(
+                response,
+                sample_idx,
+            )
+            token_usages.append(token_usage_for_response)
+            completion_token += token_usage_for_response["completion_tokens"]
+            response_entries.append(response_entry.to_dict())
 
-            problem_key = remaining_data[idx][
-                handler.question_key
-            ]  # can you use this idx
-            if problem_key not in results:
-                results[problem_key] = remaining_data[idx]
-                if isinstance(handler, NUMINATaskHandler):
-                    results[problem_key]["messages"] = ""
-                results[problem_key]["responses"] = {}
-                results[problem_key]["token_usages"] = {}
-                prompt = conversations[idx][-1]["content"]
-                results[problem_key]["prompt"] = prompt
+        completion_token /= sampling_params.params.n
+        prompt_token = response.num_input_tokens
+        prompt_tokens.append(prompt_token)
+        completion_tokens.append(completion_token)
 
-            results[problem_key]["responses"][str(temp)] = response_entries
+        unique_id = unique_ids[idx]
+        if unique_id not in results:
+            results[unique_id] = remaining_data[idx]
+            if isinstance(handler, NUMINATaskHandler):
+                results[unique_id]["messages"] = ""
+            prompt = conversations[idx][-1]["content"]
+            results[unique_id]["prompt"] = prompt
 
-            results[problem_key]["token_usages"][str(temp)] = token_usages
+        results[unique_id]["responses"] = response_entries
 
-    # Token usage summary put into another subdirectory
-    result_dir, result_name = os.path.split(result_file)
-    metrics_dir = os.path.join(result_dir, "metrics")
-    os.makedirs(metrics_dir, exist_ok=True)
-
-    # Construct the token usage result file path
-    metrics_result_file = os.path.join(metrics_dir, result_name)
+        results[unique_id]["token_usages"] = token_usages
 
     # Prepare the token usage dictionary
     metrics_dict = {
+        "configuration": run_config_dict,
         "completion_tokens": sum(completion_tokens),
         "prompt_tokens": sum(prompt_tokens),
         "avg_completion_tokens": (
@@ -536,14 +606,16 @@ def perform_inference_and_save(
         ),
     }
 
-    # Save the token usage dictionary to the result file
-    with open(metrics_result_file, "w") as f:
+    # Save the usage dictionary to the result file
+    with open(summary_file, "w") as f:
         json.dump(metrics_dict, f, indent=4)
 
-    print(f"Token usage saved to {metrics_result_file}")
+    print(f"Summary saved to {summary_file}")
 
     with open(result_file, "w", encoding="utf-8") as file:
         json.dump(results, file, ensure_ascii=False, indent=4, cls=NumpyEncoder)
+
+    print(f"Results saved to {result_file}")
 
 
 # def main():

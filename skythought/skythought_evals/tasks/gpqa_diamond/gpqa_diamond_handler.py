@@ -12,8 +12,6 @@ class GPQADiamondTaskHandler(TaskHandler):
         return self.task_config.templating_parameters["template"].format(**problem)
 
     def update_results(self, problem, response):
-        if not isinstance(response, str):
-            response = response.outputs[0].text.strip()
         # Initialize the response structure
         response_entry = {
             "content": response,
@@ -93,10 +91,3 @@ class GPQADiamondTaskHandler(TaskHandler):
     ):
         train_data = self.load_dataset(subset=subset, split=split).to_pandas()
         return train_data.iloc[start:end] if end > 0 else train_data.iloc[start:]
-
-    def process_remaining_data(self, train_data, results):
-        return [
-            row.to_dict()
-            for _, row in train_data.iterrows()
-            if str(row["Question"]) not in results
-        ]

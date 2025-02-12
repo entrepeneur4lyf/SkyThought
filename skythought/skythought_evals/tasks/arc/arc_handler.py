@@ -38,8 +38,6 @@ class ARCChallengeTaskHandler(TaskHandler):
         return model_answer == gt_answer
 
     def update_results(self, problem, response):
-        if not isinstance(response, str):
-            response = response.outputs[0].text.strip()
         # Initialize the response structure
         response_entry = {
             "content": response,
@@ -79,13 +77,6 @@ class ARCChallengeTaskHandler(TaskHandler):
     ):
         train_data = self.load_dataset(subset=subset, split=split).to_pandas()
         return train_data.iloc[start:end] if end > 0 else train_data.iloc[start:]
-
-    def process_remaining_data(self, train_data, results):
-        return [
-            row.to_dict()
-            for _, row in train_data.iterrows()
-            if str(row[self.question_key]) not in results
-        ]
 
     def get_answer(self, completion):
         # First, we try to extract similar to MATH answers

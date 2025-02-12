@@ -89,7 +89,7 @@ class SingleParsedResponse:
     correctness: Optional[bool] = None
     reason: Optional[str] = None
 
-    def as_dict(self):
+    def to_dict(self):
         return {
             "content": self.content,
             "correctness": self.correctness,
