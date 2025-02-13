@@ -66,7 +66,6 @@ def parse_common_args(
     sampling_params: str,
     n: int,
     batch_size: int,
-    dtype: str,
     system_prompt: str,
     assistant_prefill: str,
 ) -> Tuple[
@@ -110,10 +109,6 @@ def parse_common_args(
     sampling_params_as_dict = parse_multi_args(sampling_params)
     backend_args_as_dict = parse_multi_args(backend_args)
 
-    # Set dtype
-    if backend in [Backend.RAY, Backend.VLLM]:
-        backend_args_as_dict["dtype"] = dtype
-
     sampling_params: SamplingParameters = SamplingParameters.from_dict(
         backend, sampling_params_as_dict
     )
@@ -147,7 +142,6 @@ def parse_common_args(
         sampling_params,
         n,
         batch_size,
-        dtype,
         system_prompt,
         assistant_prefill,
     )
@@ -187,7 +181,7 @@ def evaluate(
     backend_args: Annotated[
         str,
         typer.Option(
-            help="Backend parameters to use for inference.",
+            help="Backend parameters to use for inference. For open-source models, we perform inference in float32 by default",
             case_sensitive=False,
         ),
     ] = "",
@@ -228,9 +222,6 @@ def evaluate(
             help="Batch size for inference. only applicable for the vllm backend."
         ),
     ] = 64,
-    dtype: str = typer.Option(
-        "float32", help="dtype for inference with vLLM.", case_sensitive=False
-    ),
 ):
     set_seed(seed)
 
@@ -245,7 +236,6 @@ def evaluate(
         sampling_params,
         n,
         batch_size,
-        dtype,
         system_prompt,
         assistant_prefill,
     ) = parse_common_args(
@@ -258,7 +248,6 @@ def evaluate(
         sampling_params=sampling_params,
         n=n,
         batch_size=batch_size,
-        dtype=dtype,
         system_prompt=system_prompt,
         assistant_prefill=assistant_prefill,
     )
@@ -389,9 +378,6 @@ def generate(
             help="Batch size for inference. only applicable for the vllm backend."
         ),
     ] = 64,
-    dtype: Annotated[
-        str, typer.Option(help="dtype for inference with vLLM.", case_sensitive=False)
-    ] = "float32",
     start: Annotated[int, typer.Option(help="Start index for the dataset.")] = 0,
     end: Annotated[int, typer.Option(help="End index for the dataset.")] = -1,
     resume_from: Annotated[
@@ -411,7 +397,6 @@ def generate(
         sampling_params,
         n,
         batch_size,
-        dtype,
         system_prompt,
         assistant_prefill,
     ) = parse_common_args(
@@ -423,7 +408,6 @@ def generate(
         sampling_params=sampling_params,
         n=n,
         batch_size=batch_size,
-        dtype=dtype,
         system_prompt=system_prompt,
         assistant_prefill=assistant_prefill,
     )

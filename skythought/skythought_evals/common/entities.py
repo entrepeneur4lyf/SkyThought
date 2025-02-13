@@ -38,6 +38,7 @@ class SamplingParameters(BaseModel):
         params = copy.deepcopy(params)
         if backend == Backend.OPENAI:
             return cls(params=OpenAISamplingParams(**params))
+        # Currently, ray-data based processor only supports vllm as the inference engine
         elif backend in [Backend.VLLM, Backend.RAY]:
             return cls(params=VLLMSamplingParams(**params))
         else:
