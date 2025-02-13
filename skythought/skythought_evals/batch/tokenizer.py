@@ -115,6 +115,7 @@ class ChatTemplateTokenizer:
                     conversation,
                     tokenize=False,
                     add_generation_prompt=add_generation_prompt,
+                    continue_final_message=not add_generation_prompt,
                 )
             )
         tokens = self.tokenizer(full_prompts)["input_ids"]

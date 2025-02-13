@@ -9,7 +9,7 @@ from skythought_evals.cli import (
     Backend,
     SamplingParameters,
     app,
-)  # Replace with your actual CLI app module
+)
 from typer.testing import CliRunner
 
 runner = CliRunner(mix_stderr=False)
