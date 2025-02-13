@@ -71,7 +71,7 @@ class RayLLMEngineArgs(BaseModel):
     num_replicas: Optional[int] = Field(description="Number of replicas to use for Ray")
     batch_size: Optional[int] = Field(description="Batch size for Ray")
     gpu_memory_utilization: Optional[float] = Field(
-        description="GPU memory utilization for Ray"
+        description="GPU memory utilization for the vLLM engine"
     )
     dtype: Literal["float32", "float16", "bfloat16", "float8"] = Field(
         "float32", description="Data type for inference engine."
