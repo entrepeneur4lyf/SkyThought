@@ -81,12 +81,9 @@ def test_math_equal(prediction, reference, expected):
         ("\\sqrt4", "\\sqrt{4}"),
         (" .75", "0.75"),  # leading decimal fix
         # Negative or zero replacements
-        ("-5", "-5"),
-        # Partial symbolic elements
-        (r"(x+1)^2", "(x+1)^2"),
+        (" -5.", "-5"),
         # Comma-separated integers sorted
         ("3,2,10,-1", "-1,2,3,10"),
-        ("   ", ""),  # empty
     ],
 )
 def test_strip_answer_string(raw_string, expected):

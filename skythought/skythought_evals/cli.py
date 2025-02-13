@@ -197,7 +197,7 @@ def evaluate(
         typer.Option(
             help="Result dir to save files.",
         ),
-    ] = None,
+    ] = "./",
     system_prompt_name: Annotated[
         str, typer.Option(help="System prompt name to use")
     ] = None,
@@ -285,23 +285,21 @@ def evaluate(
         end,
     )
 
-    output_dir = None
-    if result_dir is not None:
-        output_dir = get_output_dir(
-            result_dir,
-            model_id=model,
-            task=task,
-            start=start,
-            end=end,
-            run_config=run_config_dict,
+    output_dir = get_output_dir(
+        result_dir,
+        model_id=model,
+        task=task,
+        start=start,
+        end=end,
+        run_config=run_config_dict,
+    )
+    if not overwrite and output_dir.exists():
+        raise ValueError(
+            f"Output directory {output_dir} already exists. pass `--overwrite` to overwrite."
         )
-        if not overwrite and output_dir.exists():
-            raise ValueError(
-                f"Output directory {output_dir} already exists. pass `--overwrite` to overwrite."
-            )
-        # create result dir if not exists
-        if not os.path.exists(output_dir):
-            os.makedirs(output_dir)
+    # create result dir if not exists
+    if not os.path.exists(output_dir):
+        os.makedirs(output_dir)
 
     generate_and_score(
         handler,
@@ -360,7 +358,7 @@ def generate(
     system_prompt_name: Annotated[
         str,
         typer.Option(
-            help="System prompt template name to be used. Available choices: "
+            help="System prompt template name to be used. Available choices: []"
         ),
     ] = None,
     system_prompt: Annotated[str, typer.Option(help="System prompt to use")] = None,
