@@ -365,7 +365,7 @@ def generate_and_score(
     accuracy, id_to_scores, total_finish = score_responses(
         handler, results, max_workers=32
     )
-    logger.info(f"Overall accuracy after generation: {accuracy}")
+    logger.info(f"Accuracy: {accuracy}")
 
     num_responses_total = len(results) * sampling_params.params.n
 
@@ -464,67 +464,30 @@ def generate_and_save(
     logger.info(f"Saved summary to {summary_file}")
 
 
-def score_results(handler: TaskHandler, run_dir: Path, run_summary: dict):
+def score_results(
+    handler: TaskHandler, run_dir: Path, run_summary: SummaryResults
+) -> None:
+    # load existing results
     result_file = run_dir / "results.json"
-    results = load_existing_results(result_file)
-    logger.info(f"Loaded {len(results)} existing results.")
-
-    total_correct = 0
-    total_finish = 0
-    id_to_scores = {}
-    num_generations_per_problem = len(results[list(results.keys())[0]]["responses"])
-
-    with ProcessPoolExecutor(max_workers=32) as executor:
-        future_to_task = {
-            executor.submit(
-                handler.update_results, result, result["responses"][i]["content"]
-            ): (
-                result,
-                i,
-                unique_id,
-            )
-            for unique_id, result in results.items()
-            for i in range(num_generations_per_problem)
-        }
-
-        # Collect results as they finish
-        for future in tqdm(
-            as_completed(future_to_task),
-            total=len(future_to_task),
-            desc="Scoring results",
-        ):
-            result, sample_idx, unique_id = future_to_task[future]
-            new_response_entry = future.result()
-            total_correct += new_response_entry["correctness"]
-            total_finish += 1
-
-            # Update the corresponding record in results
-            if unique_id not in id_to_scores:
-                id_to_scores[unique_id] = [0 for _ in range(len(result["responses"]))]
-
-            results[unique_id]["responses"][sample_idx]["correctness"] = (
-                new_response_entry["correctness"]
-            )
-            results[unique_id]["responses"][sample_idx]["reason"] = new_response_entry[
-                "reason"
-            ]
-            id_to_scores[unique_id][sample_idx] = new_response_entry["correctness"]
-
-    acc = round(total_correct / total_finish, 4) if total_finish > 0 else 0
-    logger.info(f"Final reject-sampling accuracy: {acc}")
-
-    pass_at_k_metrics = None
-    if len(results) > 1:
-        pass_at_k_metrics = pass_at_k(num_generations_per_problem, id_to_scores)
-        logger.info(json.dumps({"pass_at_k": pass_at_k_metrics}))
-
-    run_summary.update({"accuracy": acc, "pass_at_k": pass_at_k_metrics})
-    # save summary
     summary_file = run_dir / "summary.json"
-    with open(summary_file, "w") as f:
-        json.dump(run_summary, f, indent=4)
+    results = load_existing_results(result_file)
+    logger.info(f"Loaded {len(results)} existing results for scoring.")
 
-    with open(result_file, "w", encoding="utf-8") as file:
-        json.dump(results, file, ensure_ascii=False, indent=4, cls=NumpyEncoder)
+    accuracy, id_to_scores, total_finish = score_responses(handler, results)
 
-    logging.info(f"Saved results to {str(result_file)}")
+    logger.info(f"Accuracy: {accuracy}")
+
+    sample_count = 0
+    if results:
+        sample_count = len(next(iter(results.values()))["responses"])
+    pass_at_k_metrics = None
+    if sample_count > 1:
+        pass_at_k_metrics = pass_at_k(sample_count, id_to_scores)
+
+    run_summary.accuracy = accuracy
+    run_summary.pass_at_k = pass_at_k_metrics
+    save_summary(summary_file, run_summary)
+
+    with open(result_file, "w", encoding="utf-8") as f:
+        json.dump(results, f, ensure_ascii=False, indent=4, cls=NumpyEncoder)
+    logger.info(f"Re-scored results saved to {result_file}")

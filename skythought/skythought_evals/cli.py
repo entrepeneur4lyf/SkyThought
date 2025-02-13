@@ -19,6 +19,7 @@ from skythought_evals.models import ModelConfig
 from skythought_evals.tasks import TASK_HANDLER_MAP, TASK_NAMES_TO_YAML, TaskConfig
 from skythought_evals.util.cli_util import get_deterministic_hash, parse_multi_args
 from skythought_evals.util.common import set_seed
+from skythought_evals.util.results import SummaryResults
 from typing_extensions import Annotated
 
 logging.basicConfig(level=logging.INFO)
@@ -158,10 +159,7 @@ def get_output_dir(
 ) -> Path:
     parameter_hash = get_deterministic_hash(run_config)
 
-    return (
-        Path(result_dir)
-        / f"{model_id.replace('/', '_')}_{task}_s{start}_e{end}_{parameter_hash}"
-    )
+    return Path(result_dir) / f"{model_id.replace('/', '_')}_{task}_{parameter_hash}"
 
 
 @app.command("evaluate", help="Evaluate a model on a task")
@@ -515,7 +513,9 @@ def score(
     with open(summary_file, "r") as f:
         run_summary = json.load(f)
 
-    score_results(handler, run_dir, task, run_summary)
+    run_summary = SummaryResults(**run_summary)
+
+    score_results(handler, run_dir, run_summary)
 
 
 def main():
