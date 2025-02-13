@@ -20,31 +20,34 @@ We provide a wrapper script `eval.py` to conveniently run reasoning benchmarks. 
 **NOTE**: For reproducing `Sky-T1-32B-Preview` results on `AIME` and `GPQADiamond` dataset, pass in temperatures as `0.7`, and `n=8`. 
 
 ```shell
-python -m skythought_evals.eval --model NovaSky-AI/Sky-T1-32B-Preview --evals=aime,gpqa_diamond --tp=8 --temperatures 0.7 --n 8
+skythought evaluate --model NovaSky-AI/Sky-T1-32B-Preview --task aime  --backend vllm --backend-args tp=8  --sampling-params temperature=0.8,top_p=0.95 --n 8
+skythought evaluate --model NovaSky-AI/Sky-T1-32B-Preview --task gpqa_diamond --backend vllm --backend-args tp=8 --sampling-params temperature=0.8,top_p=0.9 --n 8
 ```
 
 #### Example Usage
 ```shell
-python -m skythought_evals.eval --model Qwen/QwQ-32B-Preview --evals=aime,math500,gpqa_diamond --tp=8 --result-dir ./
-```
-
-We further recommend streaming all outputs to a log file for reference:
-
-```shell
-python -m skythought_evals.eval --model Qwen/QwQ-32B-Preview --evals=aime,math500,gpqa_diamond --tp=8 --result-dir ./ 2>&1 | tee mylogs.txt
+skythought evaluate --model Qwen/QwQ-32B-Preview --task aime --backend ray --backend-args tp=8 --result-dir ./
 ```
     
-Example result: `{"AIME": <aime_accuracy>, "MATH500": <math500_accuracy>, "GPQADiamond": <gpqa_diamond_accuracy>}` 
+The results are saved in a folder in the `result-dir`:
+
+```bash
+result-dir/
+├── Qwen_QwQ-32B-Preview_aime_myHash
+│   ├── results.json # contains the full results for the benchmark
+│   └── summary.json # contains summary of the run with configuration metrics
+```
 
 ### Scaling evaluation with Ray
 
-You can scale evaluations across multiple model replicas (and across multiple nodes) with `inference_and_check` using [ray](https://docs.ray.io):
+You can scale evaluations across multiple model replicas (and across multiple nodes) using [ray](https://docs.ray.io) backend:
 
 ```shell
-python -m skythought_evals.inference_and_check --task math500 --model Qwen/Qwen2-7B-Instruct --max_tokens 4096 --split test --result-dir ./ --temperatures 0.7 --use-ray 
+skythought evaluate --model Qwen/QwQ-32B-Preview --task aime --backend ray --backend-args tp=4,num_replicas=4 --result-dir ./
 ```
 
-By default, we make use of the configuration in [ray_configs/ray_config.yaml](./ray_configs/ray_config.yaml). You can also customize this with `--ray-config /path/to/ray_config.yaml`. 
+By default, we make use of the configuration in [ray_configs/ray_config.yaml](./ray_configs/ray_config.yaml). You can also customize the following parameters for ray: 
+
 
 ### Optimized settings for 32B and 7B models
 
@@ -52,7 +55,7 @@ The following are optimized settings on a 8xH100 or a 8xA100 node.
 
 For 32B models, we recommend using `--use-ray` and the default ray configuration for best performance. 
 
-For 7B models, we recommend adding `--ray-config-tensor-parallel-size 1` and `--ray-config-num-replicas 8` for best performance. FOr example, the previous command will change to:
+For 7B models, we recommend adding `--tp 1` and `--num_replicas 8` for best performance. FOr example, the previous command will change to:
 
 ```shell
 python -m skythought_evals.inference_and_check --task math500 --model Qwen/Qwen2-7B-Instruct --max_tokens 4096 --split test --result-dir ./ --temperatures 0.7 --use-ray --ray-config-tensor-parallel-size 1 --ray-config-num-replicas 8
