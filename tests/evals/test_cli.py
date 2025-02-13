@@ -54,7 +54,7 @@ def test_evaluate_invalid_task():
 
 
 def test_evaluate_invalid_batch_size():
-    """Test that providing an invalid batch size for a backend raises a ValueError."""
+    """Test that providing batch size for a non-vllm backend raises a ValueError."""
     result = runner.invoke(
         app,
         [
@@ -75,9 +75,7 @@ def test_evaluate_invalid_batch_size():
 
 
 def test_evaluate_success(tmp_result_dir, mocker):
-    """
-    Test a successful execution of the `evaluate` command.
-    """
+    """Test a successful execution of the `evaluate` command."""
     # Mock helper functions to avoid actual processing
     mocker.patch(
         "skythought_evals.cli.parse_common_args",

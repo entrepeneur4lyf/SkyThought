@@ -2,7 +2,7 @@ import copy
 from dataclasses import dataclass
 from enum import Enum
 from importlib import resources
-from typing import Literal, Optional, Union
+from typing import Any, Dict, Literal, Optional, Union
 
 import yaml
 from pydantic import BaseModel, ConfigDict, Field
@@ -31,7 +31,7 @@ class OpenAISamplingParams(BaseModel):
 class SamplingParameters(BaseModel):
     model_config = ConfigDict(arbitrary_types_allowed=True)
 
-    params: Union[OpenAISamplingParams, VLLMSamplingParams]
+    params: Union[Dict[str, Any], OpenAISamplingParams, VLLMSamplingParams]
 
     @classmethod
     def from_dict(cls, backend: Backend, params: dict):
@@ -65,14 +65,19 @@ class OpenAIClientArgs(BaseModel):
 
 class RayLLMEngineArgs(BaseModel):
 
-    tp: Optional[int] = Field(description="Tensor parallelism size")
-    num_replicas: Optional[int] = Field(description="Number of replicas to use for Ray")
-    batch_size: Optional[int] = Field(description="Batch size for Ray")
-    gpu_memory_utilization: Optional[float] = Field(
-        description="GPU memory utilization for the vLLM engine"
+    tp: Optional[int] = Field(default=None, description="Tensor parallelism size")
+    num_replicas: Optional[int] = Field(
+        default=None, description="Number of replicas to use for Ray"
     )
-    dtype: Literal["float32", "float16", "bfloat16", "float8"] = Field(
-        "float32", description="Data type for inference engine."
+    batch_size: Optional[int] = Field(default=None, description="Batch size for Ray")
+    accelerator_type: Optional[str] = Field(
+        default=None, description="Accelerator type for the inference engine"
+    )
+    gpu_memory_utilization: Optional[float] = Field(
+        default=None, description="GPU memory utilization for the inference engine"
+    )
+    dtype: Optional[Literal["float32", "float16", "bfloat16", "float8"]] = Field(
+        default=None, description="Data type for inference engine."
     )
 
     def get_ray_llm_config(self):
@@ -90,13 +95,17 @@ class RayLLMEngineArgs(BaseModel):
         if self.batch_size is not None:
             default_config["env_config"]["batch_size"] = self.batch_size
 
+        if self.accelerator_type is not None:
+            default_config["accelerator_type"] = self.accelerator_type
+
         if self.gpu_memory_utilization is not None:
             default_config["engine_kwargs"][
                 "gpu_memory_utilization"
             ] = self.gpu_memory_utilization
 
         # FIXME (sumanthrh): there can be a corner case when we support providing a config yaml directly, and this will override the dtype
-        default_config["engine_kwargs"]["dtype"] = self.dtype
+        if self.dtype is not None:
+            default_config["engine_kwargs"]["dtype"] = self.dtype
 
         return default_config
 
@@ -108,12 +117,14 @@ class BackendParameters:
     params: Union[dict, OpenAIClientArgs, RayLLMEngineArgs]
 
     @classmethod
-    def from_dict(cls, backend_type: str, params: dict):
-        if backend_type == "rayllm":
+    def from_dict(cls, backend_type: Backend, params: dict):
+        if backend_type == Backend.RAY:
             return cls(params=RayLLMEngineArgs(**params))
-        elif backend_type == "vllm":
+        elif backend_type == Backend.VLLM:
             # passed directly to LLM(..) instantiation
             return cls(params=params)
+        elif backend_type == Backend.OPENAI:
+            return cls(params=OpenAIClientArgs(**params))
         else:
             raise ValueError(f"Invalid backend type: {backend_type}")
 

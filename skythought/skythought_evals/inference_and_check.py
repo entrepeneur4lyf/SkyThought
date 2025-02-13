@@ -20,6 +20,7 @@ from skythought_evals.batch.workload import EvalWorkload
 from skythought_evals.common.entities import (
     Backend,
     BackendParameters,
+    OpenAISamplingParams,
     RayLLMEngineArgs,
     SamplingParameters,
 )
@@ -56,7 +57,10 @@ def load_existing_results(result_file):
 
 
 def fetch_response_openai(
-    client, model_config, sampling_params: SamplingParameters, prompt
+    client: OpenAI,
+    model_config: ModelConfig,
+    sampling_params: OpenAISamplingParams,
+    prompt,
 ):
     model_name = model_config.model_id.replace("openai/", "")
     if "o1" in model_name:
@@ -68,23 +72,22 @@ def fetch_response_openai(
         response = client.chat.completions.create(
             model=model_name,
             messages=prompt,
-            n=sampling_params.params.n,
-            temperature=sampling_params.params.temperature,
-            max_tokens=sampling_params.params.max_tokens,
-            reasoning_effort=sampling_params.params.reasoning_effort,
-            frequency_penalty=sampling_params.params.frequency_penalty,
-            max_completion_tokens=sampling_params.params.max_tokens,
+            n=sampling_params.n,
+            temperature=sampling_params.temperature,
+            max_tokens=sampling_params.max_tokens,
+            reasoning_effort=sampling_params.reasoning_effort,
+            frequency_penalty=sampling_params.frequency_penalty,
+            max_completion_tokens=sampling_params.max_tokens,
         )
     else:
         response = client.chat.completions.create(
             model=model_name,
             messages=prompt,
-            n=sampling_params.params.n,
-            temperature=sampling_params.params.temperature,
-            max_tokens=sampling_params.params.max_tokens,
-            reasoning_effort=sampling_params.params.reasoning_effort,
-            frequency_penalty=sampling_params.params.frequency_penalty,
-            max_completion_tokens=sampling_params.params.max_tokens,
+            n=sampling_params.n,
+            temperature=sampling_params.temperature,
+            max_tokens=sampling_params.max_tokens,
+            frequency_penalty=sampling_params.frequency_penalty,
+            max_completion_tokens=sampling_params.max_tokens,
         )
     return response
 
@@ -97,8 +100,6 @@ def fetch_responses_ray(
 ):
     config = backend_args.get_ray_llm_config()
     config["model_id"] = model_config.model_id
-    # use user-provided dtype from CLI
-    config["engine_kwargs"]["dtype"] = model_config.dtype
 
     engine_cfg = init_engine_from_config(config)
     ds = ray.data.from_items([(idx, conv) for idx, conv in enumerate(conversations)])
@@ -144,7 +145,7 @@ def inference(
 ):
     if backend == Backend.RAY:
         responses = fetch_responses_ray(
-            conversations, backend_params, model_config, sampling_params
+            conversations, backend_params.params, model_config, sampling_params
         )
         responses = [
             Response.from_ray_response(response) for response in responses.iter_rows()

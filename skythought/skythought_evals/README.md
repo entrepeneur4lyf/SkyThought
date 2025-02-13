@@ -20,8 +20,8 @@ We provide a wrapper script `eval.py` to conveniently run reasoning benchmarks. 
 **NOTE**: For reproducing `Sky-T1-32B-Preview` results on `AIME` and `GPQADiamond` dataset, pass in temperatures as `0.7`, and `n=8`. 
 
 ```shell
-skythought evaluate --model NovaSky-AI/Sky-T1-32B-Preview --task aime  --backend vllm --backend-args tp=8  --sampling-params temperature=0.8,top_p=0.95 --n 8
-skythought evaluate --model NovaSky-AI/Sky-T1-32B-Preview --task gpqa_diamond --backend vllm --backend-args tp=8 --sampling-params temperature=0.8,top_p=0.9 --n 8
+skythought evaluate --model NovaSky-AI/Sky-T1-32B-Preview --task aime  --backend vllm --backend-args tp=8  --sampling-params temperature=0.6,top_p=0.95 --n 8
+skythought evaluate --model NovaSky-AI/Sky-T1-32B-Preview --task gpqa_diamond --backend vllm --backend-args tp=8 --sampling-params temperature=0.6,top_p=0.95 --n 8
 ```
 
 #### Example Usage
@@ -58,7 +58,7 @@ For 32B models, we recommend using `--use-ray` and the default ray configuration
 For 7B models, we recommend adding `--tp 1` and `--num_replicas 8` for best performance. FOr example, the previous command will change to:
 
 ```shell
-python -m skythought_evals.inference_and_check --task math500 --model Qwen/Qwen2-7B-Instruct --max_tokens 4096 --split test --result-dir ./ --temperatures 0.7 --use-ray --ray-config-tensor-parallel-size 1 --ray-config-num-replicas 8
+skythought evaluate --model Qwen/Qwen2-7B-Instruct --task math500 --backend ray --backend-args tp=1,num_replicas=8 --result-dir ./
 ```
 
 #### Multi-node inference
@@ -70,25 +70,16 @@ Note that if you have a ray cluster setup, you can scale the number of replicas 
 While we are actively working on a better CLI interface, you can use `-m skythought_evals.inference_and_check` for Best-of-N evaluation. 
 
 ```bash
-python -m skythought_evals.inference_and_check --task math500 --model Qwen/Qwen2-7B-Instruct --tp 4 --max_tokens 4096 --split test --result-dir ./ --temperatures 0.7 --n 64
+skythought evaluate --model Qwen/Qwen2-7B-Instruct --task math500 --backend ray --backend-args tp=1,num_replicas=8 --sampling-params temperature=0.7,max_tokens 4096 --n 64 --result-dir ./
 ```
 
 ### Distill and Reject Sampling
 Currently we support distill and reject sampling from various self-hosted models for NUMINA, APPS, and TACO datasets. For NUMINA, the source can be one from `[amc_aime, math, olympiads]`.
+
 #### Example Usage
 
 ```shell
-python -m skythought_evals.inference_and_check --task apps --model Qwen/QwQ-32B-Preview --tp 8 --max_tokens 16384 --split test --difficulty all --result-dir $SKYT_HOME/data
-
-python -m skythought_evals.inference_and_check --task taco --model Qwen/QwQ-32B-Preview --tp 8 --max_tokens 16384 --split train --difficulty MEDIUM --result-dir $SKYT_HOME/data
-
-python -m skythought_evals.inference_and_check --task taco --model Qwen/QwQ-32B-Preview --tp 8 --max_tokens 16384 --split test --difficulty all --result-dir $SKYT_HOME/data
-
-python -m skythought_evals.inference_and_check --task numina --model Qwen/QwQ-32B-Preview --tp 8 --max_tokens 16384 --split train --source math --filter-difficulty --result-dir $SKYT_HOME/data --math-difficulty-lower-bound 4 --math-difficulty-upper-bound 9
-
-python -m skythought_evals.inference_and_check --task numina --model Qwen/QwQ-32B-Preview --tp 8 --max_tokens 16384 --split train --source amc_aime --filter-difficulty --result-dir $SKYT_HOME/data --math-difficulty-lower-bound 1 --math-difficulty-upper-bound 9
-
-python -m skythought_evals.inference_and_check --task numina --model Qwen/QwQ-32B-Preview --tp 8 --max_tokens 16384 --split train --end 20000--source olympiads --filter-difficulty --result-dir $SKYT_HOME/data --math-difficulty-lower-bound 9 --math-difficulty-upper-bound 9
+skythought generate --model Qwen/QwQ-32B-Preview --task apps --backend ray --backend-args tp=8 --sampling-params max_tokens=16384 --result-dir $SKYT_HOME/data
 ```
 
 ### Reproducibility Issues

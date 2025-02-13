@@ -110,6 +110,9 @@ def parse_common_args(
     sampling_params_as_dict = parse_multi_args(sampling_params)
     backend_args_as_dict = parse_multi_args(backend_args)
 
+    if n is not None:
+        sampling_params_as_dict["n"] = n
+
     sampling_params: SamplingParameters = SamplingParameters.from_dict(
         backend, sampling_params_as_dict
     )
@@ -117,17 +120,16 @@ def parse_common_args(
         backend, backend_args_as_dict
     )
 
-    if n is not None:
-        sampling_params.params.n = n
-
     if sampling_params.params.top_p < 1 and model.startswith("openai/o1"):
         print(
             "OpenAI o1 models do not support `top_p` sampling. Resetting `top_p` to 1"
         )
         sampling_params.params.top_p = 1
+        sampling_params_as_dict["top_p"] = 1
 
     if sampling_params.params.temperature == 0 and sampling_params.params.n > 1:
         sampling_params.params.n = 1
+        sampling_params_as_dict["n"] = 1
         logger.warning(
             "Warning: Temperature 0 does not support multiple samples. Setting n=1."
         )
