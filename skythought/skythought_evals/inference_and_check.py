@@ -24,6 +24,7 @@ from skythought_evals.common.entities import (
 )
 from skythought_evals.models import ModelConfig
 from skythought_evals.tasks import (
+    ConversationType,
     NUMINATaskHandler,
     TaskHandler,
 )
@@ -124,14 +125,14 @@ def _parse_response_for_idx(
 
 
 def inference(
-    conversations,
-    backend,
+    conversations: List[ConversationType],
+    backend: Backend,
     backend_params: BackendParameters,
-    model_config,
+    model_config: ModelConfig,
     sampling_params: SamplingParameters,
     **kwargs,
 ):
-    if backend == "ray":
+    if backend == Backend.RAY:
         responses = fetch_responses_ray(
             conversations, backend_params, model_config, sampling_params
         )
@@ -143,7 +144,7 @@ def inference(
         # TODO: revisit the underlying issue and remove the deepcopy if possible
         responses = copy.deepcopy(responses)
         responses = sorted(responses, key=lambda x: x.index)
-    elif backend == "openai":
+    elif backend == Backend.OPENAI:
         llm = OpenAI(**backend_params)
         fetch_partial = partial(
             fetch_response_openai,
@@ -156,7 +157,7 @@ def inference(
             responses = list(e.map(fetch_partial, conversations))
 
         responses = [Response.from_openai_response(response) for response in responses]
-    elif backend == "vllm":
+    elif backend == Backend.VLLM:
         batch_size = kwargs.get("batch_size", 1)
         engine_kwargs = copy.deepcopy(backend_params.to_dict())
         engine_kwargs["model"] = model_config.model_id
@@ -207,7 +208,10 @@ def generate_and_score(
     eval_data = handler.load_and_filter_dataset(start, end).to_dict(orient="records")
 
     conversations = handler.make_conversations(
-        eval_data, model_config.system_prompt, model_config.user_template
+        eval_data,
+        model_config.system_prompt,
+        model_config.user_template,
+        model_config.assistant_prefill,
     )
     unique_ids = [eval_data[i]["_index"] for i in range(len(eval_data))]
 
@@ -442,7 +446,10 @@ def generate_and_save(
         print("All results saved. Exiting...")
         return
     conversations = handler.make_conversations(
-        remaining_data, model_config.system_prompt, model_config.user_template
+        remaining_data,
+        model_config.system_prompt,
+        model_config.user_template,
+        model_config.assistant_prefill,
     )
 
     if len(conversations) == 0:

@@ -26,8 +26,6 @@ logger = logging.getLogger(__name__)
 
 app = typer.Typer(pretty_exceptions_enable=False)
 
-TEMP_DEFAULT = typer.Option([0], help="Temperature for sampling.")
-
 
 def get_run_config(
     task: str,
@@ -58,7 +56,7 @@ def get_run_config(
     }
 
 
-def _parse_common_args(
+def parse_common_args(
     *,
     task: str,
     model: str,
@@ -69,6 +67,8 @@ def _parse_common_args(
     n: int,
     batch_size: int,
     dtype: str,
+    system_prompt: str,
+    assistant_prefill: str,
 ) -> Tuple[
     str,
     dict,
@@ -82,12 +82,23 @@ def _parse_common_args(
     int,
     str,
 ]:
+    # For strings passed via CLI, recover escape characters properly. This is hacky but works and convenient for short strings
+    system_prompt = (
+        system_prompt.encode("utf-8").decode("unicode_escape")
+        if system_prompt
+        else None
+    )
+    assistant_prefill = (
+        assistant_prefill.encode("utf-8").decode("unicode_escape")
+        if assistant_prefill
+        else None
+    )
 
     # TODO (sumanthrh): We should ideally read from ctx and get user-provided params
     if batch_size != 64 and backend != Backend.VLLM:
         raise ValueError("Batch size is only supported for the vllm backend.")
 
-    # enable hf_transfer if not overridden by the user
+    # Enable hf_transfer if not overridden by the user
     if os.environ.get("HF_HUB_ENABLE_HF_TRANSFER", None) is None:
         os.environ["HF_HUB_ENABLE_HF_TRANSFER"] = "1"
 
@@ -99,7 +110,7 @@ def _parse_common_args(
     sampling_params_as_dict = parse_multi_args(sampling_params)
     backend_args_as_dict = parse_multi_args(backend_args)
 
-    # set dtype
+    # Set dtype
     if backend in [Backend.RAY, Backend.VLLM]:
         backend_args_as_dict["dtype"] = dtype
 
@@ -137,6 +148,8 @@ def _parse_common_args(
         n,
         batch_size,
         dtype,
+        system_prompt,
+        assistant_prefill,
     )
 
 
@@ -201,7 +214,7 @@ def evaluate(
     seed: Annotated[int, typer.Option(help="Random seed.")] = 41,
     assistant_prefill: Annotated[
         str,
-        typer.Option(help=r'Assistant prefill for the model response. Ex: "<think>\n"'),
+        typer.Option(help=r'Assistant prefill for the model response. Ex: "<think>"'),
     ] = None,
     as_test: Annotated[
         bool, typer.Option(help="Perform a test run on 10 samples of the dataset.")
@@ -233,9 +246,12 @@ def evaluate(
         n,
         batch_size,
         dtype,
-    ) = _parse_common_args(
+        system_prompt,
+        assistant_prefill,
+    ) = parse_common_args(
         task=task,
         model=model,
+        # `evaluate` does not allow customization of `task_args`
         task_args="",
         backend=backend,
         backend_args=backend_args,
@@ -243,6 +259,8 @@ def evaluate(
         n=n,
         batch_size=batch_size,
         dtype=dtype,
+        system_prompt=system_prompt,
+        assistant_prefill=assistant_prefill,
     )
     # ensure parsing was correct
     assert isinstance(sampling_params, SamplingParameters)
@@ -394,7 +412,9 @@ def generate(
         n,
         batch_size,
         dtype,
-    ) = _parse_common_args(
+        system_prompt,
+        assistant_prefill,
+    ) = parse_common_args(
         task=task,
         model=model,
         task_args=task_args,
@@ -404,6 +424,8 @@ def generate(
         n=n,
         batch_size=batch_size,
         dtype=dtype,
+        system_prompt=system_prompt,
+        assistant_prefill=assistant_prefill,
     )
 
     assert isinstance(sampling_params, SamplingParameters)

@@ -7,7 +7,7 @@ import xxhash
 from click.core import ParameterSource
 
 
-def parse_multi_args(vals: str) -> dict:
+def _parse_multi_args(vals: str) -> dict:
     """Parse a multi-value argument into a dictionary.
     The argument can either be a comma separated list of key=value pairs, or a dictionary.
     """
@@ -24,6 +24,15 @@ def parse_multi_args(vals: str) -> dict:
         return {
             k: literal_eval(v) for k, v in [val.split("=") for val in vals.split(",")]
         }
+
+
+def parse_multi_args(vals: str) -> dict:
+    try:
+        return _parse_multi_args(vals)
+    except Exception as err:
+        raise ValueError(
+            f"Expected comma separated list of parameters arg1=val1,args2=val2 or a dictionary, got invalid argument {vals}. "
+        ) from err
 
 
 def get_user_provided_params(ctx: typer.Context) -> dict:

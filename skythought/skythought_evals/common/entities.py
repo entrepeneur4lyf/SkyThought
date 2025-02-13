@@ -34,14 +34,14 @@ class SamplingParameters(BaseModel):
     params: Union[OpenAISamplingParams, VLLMSamplingParams]
 
     @classmethod
-    def from_dict(cls, backend_type: str, params: dict):
+    def from_dict(cls, backend: Backend, params: dict):
         params = copy.deepcopy(params)
-        if backend_type == "openai":
+        if backend == Backend.OPENAI:
             return cls(params=OpenAISamplingParams(**params))
-        elif backend_type == "vllm":
+        elif backend in [Backend.VLLM, Backend.RAY]:
             return cls(params=VLLMSamplingParams(**params))
         else:
-            raise ValueError(f"Invalid backend type: {backend_type}")
+            raise ValueError(f"Invalid backend type: {backend}")
 
     def __repr__(self):
         return f"SamplingParameters(params={self.params})"
