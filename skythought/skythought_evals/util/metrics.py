@@ -17,8 +17,6 @@ def _pass_at_k(n, c, k):
 
 
 def pass_at_k(N: int, id_to_scores: Dict[str, Dict[str, Any]]):
-    # pass at k per temperature
-    # scores = list(correct[temp].values())
     final_passk_scores = {}
     k_to_passk_scores = defaultdict(list)  # k -> list of scores
     for _, sample_scores in id_to_scores.items():
