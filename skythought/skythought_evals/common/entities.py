@@ -116,6 +116,7 @@ class BackendParameters:
         if backend_type == "rayllm":
             return cls(params=RayLLMEngineArgs(**params))
         elif backend_type == "vllm":
+            # passed directly to LLM(..) instantiation
             return cls(params=params)
         else:
             raise ValueError(f"Invalid backend type: {backend_type}")

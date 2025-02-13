@@ -358,7 +358,10 @@ def generate(
         ),
     ] = None,
     system_prompt_name: Annotated[
-        str, typer.Option(help="System prompt name to use")
+        str,
+        typer.Option(
+            help="System prompt template name to be used. Available choices: "
+        ),
     ] = None,
     system_prompt: Annotated[str, typer.Option(help="System prompt to use")] = None,
     n: Annotated[
