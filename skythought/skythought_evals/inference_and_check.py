@@ -414,6 +414,7 @@ def generate_and_save(
     resume_from: Optional[os.PathLike] = None,
     **kwargs,
 ):
+    breakpoint()
     if resume_from is not None:
         resume_from = Path(resume_from)
         result_file = resume_from / "results.json"

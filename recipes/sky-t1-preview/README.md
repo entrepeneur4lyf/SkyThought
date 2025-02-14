@@ -30,15 +30,15 @@ The expected output is labeled_source_0_-1.json. We also provide instructions to
 Inference the results from QwQ on several datasets. In preview version, we use data from the following dataset.
 
 ```shell
-skythought generate --task apps --model Qwen/QwQ-32B-Preview --backend vllm --backend-args tp=8 --sampling-params max_tokens=16384 --task-args '{"split": "test", "preprocess_config": {"difficulty": "all"}}' --result-dir $SKYT_HOME/data
+skythought generate --task apps --model Qwen/QwQ-32B-Preview --backend vllm --backend-args tp=8 --sampling-params max_tokens=16384 --task-args dataset_split=test --result-dir $SKYT_HOME/data
 
-skythought generate --task taco --model Qwen/QwQ-32B-Preview --backend vllm --backend-args tp=8 --sampling-params max_tokens=16384 --task-args '{"split": "train", "preprocess_config": {"difficulty": "MEDIUM"}}' --result-dir $SKYT_HOME/data
+skythought generate --task taco --model Qwen/QwQ-32B-Preview --backend vllm --backend-args tp=8 --sampling-params max_tokens=16384 --task-args '{"dataset_split": "train", "preprocess_config": {"difficulty": "MEDIUM"}}' --result-dir $SKYT_HOME/data
 
-skythought generate --task numina --model Qwen/QwQ-32B-Preview --backend vllm --backend-args tp=8 --sampling-params max_tokens=16384 --task-args '{"split": "train", "preprocess_config": {"difficulty": "math"}}' --result-dir $SKYT_HOME/data
+skythought generate --task numina --model Qwen/QwQ-32B-Preview --backend vllm --backend-args tp=8 --sampling-params max_tokens=16384 --task-args '{"dataset_split": "train", "preprocess_config": {"difficulty": "math"}}' --result-dir $SKYT_HOME/data
 
-skythought generate --task numina --model Qwen/QwQ-32B-Preview --backend vllm --backend-args tp=8 --sampling-params max_tokens=16384 --task-args '{"split": "train", "preprocess_config": {"difficulty": "amc_aime"}}' --result-dir $SKYT_HOME/data
+skythought generate --task numina --model Qwen/QwQ-32B-Preview --backend vllm --backend-args tp=8 --sampling-params max_tokens=16384 --task-args '{"dataset_split": "train", "preprocess_config": {"difficulty": "amc_aime"}}' --result-dir $SKYT_HOME/data
 
-skythought generate --task numina --model Qwen/QwQ-32B-Preview --backend vllm --backend-args tp=8 --sampling-params max_tokens=16384 --task-args '{"split": "train", "preprocess_config": {"difficulty": "olympiads"}}' --result-dir $SKYT_HOME/data --start 0 --end 20000
+skythought generate --task numina --model Qwen/QwQ-32B-Preview --backend vllm --backend-args tp=8 --sampling-params max_tokens=16384 --task-args '{"dataset_split": "train", "preprocess_config": {"difficulty": "olympiads"}}' --result-dir $SKYT_HOME/data --start 0 --end 20000
 ```
 
 This will save the results in individual folders in `result-dir`. The directory structure should be as follows:

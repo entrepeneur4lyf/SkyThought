@@ -325,7 +325,6 @@ def generate(
         str,
         typer.Option(
             help="Task arguments to use for inference.",
-            case_sensitive=False,
         ),
     ] = "",
     backend: Annotated[
@@ -386,6 +385,7 @@ def generate(
     ] = None,
 ):
     set_seed(seed)
+    breakpoint()
 
     (
         task,

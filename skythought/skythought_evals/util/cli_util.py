@@ -21,9 +21,15 @@ def _parse_multi_args(vals: str) -> dict:
         vals = vals.replace(" ", "")
         if not len(vals):
             return {}
-        return {
-            k: literal_eval(v) for k, v in [val.split("=") for val in vals.split(",")]
-        }
+        ret = {}
+        for val in vals.split(","):
+            k, v = val.split("=")
+            try:
+                ret[k] = literal_eval(v)
+            except ValueError:
+                # if literal eval fails, propagate as a string
+                ret[k] = v
+        return ret
 
 
 def parse_multi_args(vals: str) -> dict:
