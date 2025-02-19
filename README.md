@@ -70,7 +70,7 @@ We support a wide variety of datasets in mathematics, science and coding:
 - MinervaMath
 - GSM8K
 
-For running evaluation, please refer to [skythought_evals/README.md](skythought/skythought_evals/README.md).
+For running evaluation, please refer to our [example guide](examples/evaluate.ipynb) and the README [README](skythought/skythought_evals/README.md).
 
 
 ### Evaluation results
