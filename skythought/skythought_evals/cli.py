@@ -4,6 +4,7 @@ import os
 from pathlib import Path
 from typing import Tuple
 
+import click
 import typer
 from skythought_evals.common.entities import (
     Backend,
@@ -15,7 +16,7 @@ from skythought_evals.inference_and_check import (
     generate_and_score,
     score_results,
 )
-from skythought_evals.models import ModelConfig
+from skythought_evals.models import ModelConfig, get_system_prompt_keys
 from skythought_evals.tasks import TASK_HANDLER_MAP, TASK_NAMES_TO_YAML, TaskConfig
 from skythought_evals.util.cli_util import get_deterministic_hash, parse_multi_args
 from skythought_evals.util.common import set_seed
@@ -168,11 +169,11 @@ def get_output_dir(
 def evaluate(
     ctx: typer.Context,
     task: Annotated[
-        # TODO: add choices
         str,
         typer.Option(
             ...,
             help="Task to process.",
+            click_type=click.Choice(list(TASK_NAMES_TO_YAML.keys())),
             case_sensitive=False,
         ),
     ],
@@ -201,20 +202,29 @@ def evaluate(
     result_dir: Annotated[
         str,
         typer.Option(
-            help="Result dir to save files.",
+            help="Result directory to save outputs.",
         ),
     ] = "./",
     system_prompt_name: Annotated[
-        str, typer.Option(help="System prompt name to use")
+        str,
+        typer.Option(
+            help="System prompt template to use, overriding any pre-configured system prompt for this model.",
+            click_type=click.Choice(get_system_prompt_keys()),
+        ),
     ] = None,
-    system_prompt: Annotated[str, typer.Option(help="System prompt to use")] = None,
+    system_prompt: Annotated[
+        str,
+        typer.Option(
+            help="System prompt to use, overriding any pre-configured system prompt for this model."
+        ),
+    ] = None,
     n: Annotated[
         int, typer.Option(help="Number of samples generated per problem.")
     ] = None,
     seed: Annotated[int, typer.Option(help="Random seed.")] = 41,
     assistant_prefill: Annotated[
         str,
-        typer.Option(help=r'Assistant prefill for the model response. Ex: "<think>"'),
+        typer.Option(help=r'Assistant prefill for the model response. Ex: "<think>\n"'),
     ] = None,
     as_test: Annotated[
         bool, typer.Option(help="Perform a test run on 10 samples of the dataset.")
@@ -324,7 +334,13 @@ def evaluate(
 @app.command("generate", help="Generate model response for a task and save results")
 def generate(
     task: Annotated[
-        str, typer.Option(..., help="Task to process.", case_sensitive=False)
+        str,
+        typer.Option(
+            ...,
+            help="Task to process.",
+            click_type=click.Choice(list(TASK_NAMES_TO_YAML.keys())),
+            case_sensitive=False,
+        ),
     ],
     model: Annotated[str, typer.Option(..., help="The model to run")],
     task_args: Annotated[
@@ -357,13 +373,14 @@ def generate(
     result_dir: Annotated[
         str,
         typer.Option(
-            help="Result dir to save files.",
+            help="Result directory to save outputs.",
         ),
     ] = None,
     system_prompt_name: Annotated[
         str,
         typer.Option(
-            help="System prompt template name to be used. Available choices: []"
+            help="System prompt template name to be used.",
+            click_type=click.Choice(get_system_prompt_keys()),
         ),
     ] = None,
     system_prompt: Annotated[str, typer.Option(help="System prompt to use")] = None,
@@ -494,7 +511,13 @@ def score(
         str, typer.Option(..., help="The directory of saved results to score")
     ],
     task: Annotated[
-        str, typer.Option(..., help="Task to process.", case_sensitive=False)
+        str,
+        typer.Option(
+            ...,
+            help="Task to process.",
+            click_type=click.Choice(list(TASK_NAMES_TO_YAML.keys())),
+            case_sensitive=False,
+        ),
     ],
 ):
     if not os.path.exists(run_dir):

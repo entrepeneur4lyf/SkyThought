@@ -87,7 +87,6 @@ class APPSTaskHandler(TaskHandler):
     def load_and_filter_dataset(
         self, start, end, split=None, subset=None, difficulty=None
     ):
-        breakpoint()
         train_data = self.load_dataset(subset=subset, split=split)
         if difficulty or "difficulty" in self.task_config.preprocess_config:
             difficulty = (

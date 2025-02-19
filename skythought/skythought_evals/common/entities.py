@@ -66,7 +66,9 @@ class OpenAIClientArgs(BaseModel):
 
 class RayLLMEngineArgs(BaseModel):
 
-    tp: Optional[int] = Field(default=None, description="Tensor parallelism size")
+    tensor_parallel_size: Optional[int] = Field(
+        default=None, description="Tensor parallelism size"
+    )
     num_replicas: Optional[int] = Field(
         default=None, description="Number of replicas to use for Ray"
     )
@@ -88,8 +90,10 @@ class RayLLMEngineArgs(BaseModel):
         with open(config_path) as f:
             default_config = yaml.safe_load(f)
 
-        if self.tp is not None:
-            default_config["engine_kwargs"]["tensor_parallel_size"] = self.tp
+        if self.tensor_parallel_size is not None:
+            default_config["engine_kwargs"][
+                "tensor_parallel_size"
+            ] = self.tensor_parallel_size
 
         if self.num_replicas is not None:
             default_config["env_config"]["num_replicas"] = self.num_replicas

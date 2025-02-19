@@ -51,9 +51,9 @@ class NumpyEncoder(json.JSONEncoder):
         return super().default(obj)
 
 
-def load_existing_results(result_file) -> List[Dict[str, Any]]:
+def load_existing_results(result_file) -> Dict[str, Dict[str, Any]]:
     if not os.path.exists(result_file):
-        return []
+        return {}
     with open(result_file, "r", encoding="utf-8") as f:
         records = json.load(f)
     logger.info(f"Loaded {len(records)} existing results")
@@ -61,11 +61,12 @@ def load_existing_results(result_file) -> List[Dict[str, Any]]:
 
 
 def save_results(
-    result_filepath: os.PathLike, id_to_results: Dict[int, Dict[str, Any]]
+    result_filepath: os.PathLike, id_to_results: Dict[str, Dict[str, Any]]
 ):
-    entries = [entry for entry in id_to_results.values()]
     with open(result_filepath, "w", encoding="utf-8") as f:
-        f.write(json.dumps(entries, indent=4, cls=NumpyEncoder, ensure_ascii=False))
+        f.write(
+            json.dumps(id_to_results, indent=4, cls=NumpyEncoder, ensure_ascii=False)
+        )
 
 
 def fetch_response_openai(
@@ -74,7 +75,9 @@ def fetch_response_openai(
     sampling_params: OpenAISamplingParams,
     prompt,
 ):
-    model_name = model_config.model_id.replace("openai/", "")
+    model_name = model_config.name
+    # Ensure model_name has been resolved to a string
+    assert model_name
     if "o1" in model_name:
         # O1 doesn't support system prompt
         # NOTE: might want to implement this inside handler instead
@@ -82,7 +85,7 @@ def fetch_response_openai(
             p["role"] = "user"
 
         response = client.chat.completions.create(
-            model=model_name,
+            model=model_config.model_id,
             messages=prompt,
             n=sampling_params.n,
             temperature=sampling_params.temperature,
@@ -93,7 +96,7 @@ def fetch_response_openai(
         )
     else:
         response = client.chat.completions.create(
-            model=model_name,
+            model=model_config.model_id,
             messages=prompt,
             n=sampling_params.n,
             temperature=sampling_params.temperature,
@@ -215,9 +218,9 @@ def generate_responses_for_dataset(
     backend_params: BackendParameters,
     sampling_params: SamplingParameters,
     eval_data: pd.DataFrame,
-    id_to_results: Dict[int, Dict[str, Any]],
+    id_to_results: Dict[str, Dict[str, Any]],
     **kwargs,
-) -> Tuple[Dict[int, Dict[str, Any]], List[int], List[int]]:
+) -> Tuple[Dict[str, Dict[str, Any]], List[int], List[int]]:
     """Generates responses for the given dataset
 
     Performs the following:
@@ -294,9 +297,9 @@ def generate_responses_for_dataset(
 
 def score_responses(
     handler: TaskHandler,
-    id_to_results: Dict[int, Dict[str, Any]],
+    id_to_results: Dict[str, Dict[str, Any]],
     max_workers: int = 32,
-) -> Tuple[float, Dict[int, List[int]], int]:
+) -> Tuple[float, Dict[str, List[int]], int]:
     """Computes correctness for model responses for the given task
 
     The 'id_to_results' dictionary is assumed to be a mapping between problem ID -> { responses: [...], ... },
@@ -413,6 +416,7 @@ def generate_and_score(
 
     save_summary(summary_file, summary_data)
     save_results(result_file, id_to_results)
+    logger.info(f"Saved results to {result_file}")
     logger.info(f"Summary saved to {summary_file}")
 
 
@@ -433,17 +437,16 @@ def generate_and_save(
         resume_from = Path(resume_from)
         result_file = resume_from / RESULTS_FILENAME
         summary_file = resume_from / SUMMARY_FILENAME
-        results = load_existing_results(result_file)
+        id_to_results = load_existing_results(result_file)
     else:
-        results = []
+        id_to_results = {}
         result_file = output_dir / RESULTS_FILENAME
-        summary_file = output_dir / "summary.json"
+        summary_file = output_dir / SUMMARY_FILENAME
 
     eval_data = handler.load_and_filter_dataset(start, end)
 
-    id_to_results = {row["_index"]: row for row in results}
     # Step 3: generate responses (no scoring here)
-    results, prompt_tokens, completion_tokens = generate_responses_for_dataset(
+    id_to_results, prompt_tokens, completion_tokens = generate_responses_for_dataset(
         handler=handler,
         model_config=model_config,
         backend=backend,
@@ -474,7 +477,7 @@ def generate_and_save(
     )
 
     save_summary(summary_file, summary_data)
-    save_results(result_file, results)
+    save_results(result_file, id_to_results)
 
     logger.info(f"Saved results to {result_file}")
     logger.info(f"Saved summary to {summary_file}")
@@ -485,18 +488,17 @@ def score_results(
 ) -> None:
     # load existing results
     result_file = run_dir / RESULTS_FILENAME
-    summary_file = run_dir / "summary.json"
-    results = load_existing_results(result_file)
-    logger.info(f"Loaded {len(results)} existing results for scoring.")
+    summary_file = run_dir / SUMMARY_FILENAME
+    id_to_results = load_existing_results(result_file)
+    logger.info(f"Loaded {len(id_to_results)} existing results for scoring.")
 
-    id_to_results = {row["_index"]: row for row in results}
     accuracy, id_to_scores, total_finish = score_responses(handler, id_to_results)
 
     logger.info(f"Accuracy: {accuracy}")
 
     sample_count = 0
-    if results:
-        sample_count = len(next(iter(results.values()))["responses"])
+    if id_to_results:
+        sample_count = len(next(iter(id_to_results.values()))["responses"])
     pass_at_k_metrics = None
     if sample_count > 1:
         pass_at_k_metrics = pass_at_k(sample_count, id_to_scores)

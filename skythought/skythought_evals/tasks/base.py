@@ -107,7 +107,8 @@ class TaskHandler(ABC):
 
 
 def add_idx_map(x: dict, idx: int) -> dict:
-    x["_index"] = idx
+    # We convert to string for consistency
+    x["_index"] = str(idx)
     return x
 
 

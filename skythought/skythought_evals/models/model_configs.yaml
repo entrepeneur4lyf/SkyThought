@@ -28,18 +28,18 @@ user_templates: null
 #   o1_mini: &o1_mini "Question: {input}\nAnswer: "
 
 models:
-  openai/o1-mini:
+  o1-mini:
     # 'name' is by default <model_name> in the huggingface format <org>/<model_name>, but can be customized here
     name: o1-mini 
     system_prompt: null
     # user template's use positional argument for formatting
     user_template: "Question: {}\nAnswer: "
 
-  openai/o1-preview:
+  o1-preview:
     system_prompt: null
     user_template: "Question: {}\nAnswer: "
 
-  openai/gpt-4o-mini:
+  gpt-4o-mini:
     system_prompt: null
     user_template: "User: {}\nAssistant: "
 

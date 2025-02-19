@@ -1,5 +1,6 @@
 # Skythought-evals: Data Generation and Evaluation Tools
 
+
 ## Requirements 
 
 Make sure you have installed the `skythought-evals` package as outlined in the [README.md](/README.md#usage).
@@ -10,23 +11,21 @@ export OPENAI_API_KEY={openai_api_key}
 ```
 
 ## Generation and Evaluation
-The file `inference_and_check.py` provides convenient methods for generating sequences (e.g., for distillation or benchmark evaluation) and checking whether the generated solutions are correct (e.g., for reject sampling or benchmark evaluation).
 
 ### Benchmark Evaluation
-We provide a wrapper script `eval.py` to conveniently run reasoning benchmarks. This script can be used to launch evaluations for multiple benchmarks, then aggregate and log the accuracy for all benchmarks.  To see the full list of supported args and valid arguments, run `python -m skythought_evals.eval --help`
 
 **Note**: The `GPQADiamond` dataset is gated and requires first receiving access at this Huggingface [link](https://huggingface.co/datasets/Idavidrein/gpqa) (which is granted immediately), then logging into your Huggingface account in your terminal session with `huggingface-cli login`. 
 
-**NOTE**: For reproducing `Sky-T1-32B-Preview` results on `AIME` and `GPQADiamond` dataset, pass in temperatures as `0.7`, and `n=8`. 
+Given below are two examples for evaluation. For a detailed walkthrough, please refer to the [example](../../examples/evaluate.ipynb). 
 
 ```shell
-skythought evaluate --model NovaSky-AI/Sky-T1-32B-Preview --task aime  --backend vllm --backend-args tp=8  --sampling-params temperature=0.6,top_p=0.95 --n 8
-skythought evaluate --model NovaSky-AI/Sky-T1-32B-Preview --task gpqa_diamond --backend vllm --backend-args tp=8 --sampling-params temperature=0.6,top_p=0.95 --n 8
+skythought evaluate --model NovaSky-AI/Sky-T1-32B-Preview --task aime  --backend vllm --backend-args tensor_parallel_size=8  --sampling-params temperature=0.6,top_p=0.95 --n 8
+skythought evaluate --model NovaSky-AI/Sky-T1-32B-Preview --task gpqa_diamond --backend vllm --backend-args tensor_parallel_size=8 --sampling-params temperature=0.6,top_p=0.95 --n 8
 ```
 
 #### Example Usage
 ```shell
-skythought evaluate --model Qwen/QwQ-32B-Preview --task aime --backend ray --backend-args tp=8 --result-dir ./
+skythought evaluate --model Qwen/QwQ-32B-Preview --task aime --backend ray --backend-args tensor_parallel_size=8 --result-dir ./
 ```
     
 The results are saved in a folder in the `result-dir`:
@@ -43,7 +42,7 @@ result-dir/
 You can scale evaluations across multiple model replicas (and across multiple nodes) using [ray](https://docs.ray.io) backend:
 
 ```shell
-skythought evaluate --model Qwen/QwQ-32B-Preview --task aime --backend ray --backend-args tp=4,num_replicas=4 --result-dir ./
+skythought evaluate --model Qwen/QwQ-32B-Preview --task aime --backend ray --backend-args tensor_parallel_size=4,num_replicas=4 --result-dir ./
 ```
 
 By default, we make use of the configuration in [ray_configs/ray_config.yaml](./ray_configs/ray_config.yaml). You can also customize the following parameters for ray: 
@@ -58,7 +57,7 @@ For 32B models, we recommend using `--use-ray` and the default ray configuration
 For 7B models, we recommend adding `--tp 1` and `--num_replicas 8` for best performance. FOr example, the previous command will change to:
 
 ```shell
-skythought evaluate --model Qwen/Qwen2-7B-Instruct --task math500 --backend ray --backend-args tp=1,num_replicas=8 --result-dir ./
+skythought evaluate --model Qwen/Qwen2-7B-Instruct --task math500 --backend ray --backend-args tensor_parallel_size=1,num_replicas=8 --result-dir ./
 ```
 
 #### Multi-node inference
@@ -67,10 +66,10 @@ Note that if you have a ray cluster setup, you can scale the number of replicas 
 
 ### Best-of-N Evaluation
 
-While we are actively working on a better CLI interface, you can use `-m skythought_evals.inference_and_check` for Best-of-N evaluation. 
+You can use the `--n` parameter to specify the number of generations per problem. For `n>1` , we calculate pass
 
 ```bash
-skythought evaluate --model Qwen/Qwen2-7B-Instruct --task math500 --backend ray --backend-args tp=1,num_replicas=8 --sampling-params temperature=0.7,max_tokens 4096 --n 64 --result-dir ./
+skythought evaluate --model Qwen/Qwen2-7B-Instruct --task math500 --backend ray --backend-args tensor_parallel_size=1,num_replicas=8 --sampling-params temperature=0.7,max_tokens 4096 --n 64 --result-dir ./
 ```
 
 ### Distill and Reject Sampling
@@ -79,7 +78,7 @@ Currently we support distill and reject sampling from various self-hosted models
 #### Example Usage
 
 ```shell
-skythought generate --model Qwen/QwQ-32B-Preview --task apps --backend ray --backend-args tp=8 --sampling-params max_tokens=16384 --result-dir $SKYT_HOME/data
+skythought generate --model Qwen/QwQ-32B-Preview --task apps --backend ray --backend-args tensor_parallel_size=8 --sampling-params max_tokens=16384 --result-dir $SKYT_HOME/data
 ```
 
 ### Reproducibility Issues
