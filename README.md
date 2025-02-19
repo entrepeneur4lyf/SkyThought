@@ -48,10 +48,16 @@ First, clone the repository and install the package
 ```shell
 git clone https://github.com/NovaSky-AI/SkyThought.git
 cd SkyThought
-# installs shown for conda
-conda create -n eval python==3.10
-conda activate eval 
-pip install -e .
+# installs shown for uv
+uv venv python==3.10
+source .venv/bin/activate
+uv pip install -e .
+```
+
+Running evaluation is as simple as: 
+
+```bash
+skythought evaluate --model NovaSky-AI/Sky-T1-32B-Preview --task aime
 ```
 
 We support a wide variety of datasets in mathematics, science and coding:
@@ -70,7 +76,7 @@ We support a wide variety of datasets in mathematics, science and coding:
 - MinervaMath
 - GSM8K
 
-For running evaluation, please refer to our [example guide](examples/evaluate.ipynb) and the README [README](skythought/skythought_evals/README.md).
+For more details, please refer to our [evaluation guide](examples/evaluate.ipynb) and the README [README](skythought/skythought_evals/README.md).
 
 
 ### Evaluation results
