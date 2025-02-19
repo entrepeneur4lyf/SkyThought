@@ -293,7 +293,7 @@ def evaluate(
         end=end,
         run_config=run_config_dict,
     )
-    if not overwrite and output_dir.exists():
+    if not overwrite and output_dir.exists() and len(os.listdir(output_dir)) != 0:
         raise ValueError(
             f"Output directory {output_dir} already exists. pass `--overwrite` to overwrite."
         )
@@ -385,7 +385,6 @@ def generate(
     ] = None,
 ):
     set_seed(seed)
-    breakpoint()
 
     (
         task,
@@ -435,10 +434,10 @@ def generate(
         resume_from = Path(resume_from)
         if not resume_from.exists():
             raise ValueError(f"Output directory {resume_from} does not exist.")
-    else:
-        assert (
-            result_dir is not None
-        ), "Either `resume_from` or `result_dir` must be provided."
+
+    assert (resume_from is None) ^ (
+        result_dir is None
+    ), "One of `resume_from` or `result_dir` must be true."
 
     run_config_dict = get_run_config(
         task,
@@ -460,7 +459,7 @@ def generate(
             end=end,
             run_config=run_config_dict,
         )
-        if not overwrite and output_dir.exists():
+        if not overwrite and output_dir.exists() and len(os.listdir(output_dir)) != 0:
             raise ValueError(
                 f"Output directory {output_dir} already exists. pass `--overwrite` to overwrite."
             )

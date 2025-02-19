@@ -40,6 +40,9 @@ logger = logging.getLogger(__name__)
 module_dir = os.path.dirname(os.path.abspath(__file__))
 DEFAULT_RAY_CONFIG_RELATIVE_PATH = "ray_configs/ray_config.yaml"
 
+RESULTS_FILENAME = "results.json"
+SUMMARY_FILENAME = "summary.json"
+
 
 class NumpyEncoder(json.JSONEncoder):
     def default(self, obj):
@@ -48,12 +51,21 @@ class NumpyEncoder(json.JSONEncoder):
         return super().default(obj)
 
 
-def load_existing_results(result_file):
+def load_existing_results(result_file) -> List[Dict[str, Any]]:
     if not os.path.exists(result_file):
-        return {}
+        return []
     with open(result_file, "r", encoding="utf-8") as f:
         records = json.load(f)
+    logger.info(f"Loaded {len(records)} existing results")
     return records
+
+
+def save_results(
+    result_filepath: os.PathLike, id_to_results: Dict[int, Dict[str, Any]]
+):
+    entries = [entry for entry in id_to_results.values()]
+    with open(result_filepath, "w", encoding="utf-8") as f:
+        f.write(json.dumps(entries, indent=4, cls=NumpyEncoder, ensure_ascii=False))
 
 
 def fetch_response_openai(
@@ -203,23 +215,23 @@ def generate_responses_for_dataset(
     backend_params: BackendParameters,
     sampling_params: SamplingParameters,
     eval_data: pd.DataFrame,
-    existing_results: Dict[int, Dict[str, Any]],
+    id_to_results: Dict[int, Dict[str, Any]],
     **kwargs,
 ) -> Tuple[Dict[int, Dict[str, Any]], List[int], List[int]]:
     """Generates responses for the given dataset
 
     Performs the following:
-    1. Filter out the items already in `existing_results` (if resuming).
+    1. Filter out the items already in `id_to_results` (if resuming).
     2. Build the input conversations.
     3. Perform inference.
     4. Return a dictionary with new results, as well as token usage statistics
     """
-    remaining_data = handler.process_remaining_data(eval_data, existing_results)
+    remaining_data = handler.process_remaining_data(eval_data, id_to_results)
     logger.info(f"Generating results for {len(remaining_data)} problems.")
 
     if not remaining_data:
         logger.info("No remaining data to generate.")
-        return existing_results, [], []
+        return id_to_results, [], []
 
     # Prepare conversations
     conversations = handler.make_conversations(
@@ -231,7 +243,7 @@ def generate_responses_for_dataset(
 
     if not conversations:
         logger.info("No conversations to generate.")
-        return existing_results, [], []
+        return id_to_results, [], []
 
     # Perform inference
     responses = inference(
@@ -260,39 +272,42 @@ def generate_responses_for_dataset(
         unique_id = unique_ids[idx]
 
         # Update existing_results
-        if unique_id not in existing_results:
-            existing_results[unique_id] = remaining_data[idx]
+        if unique_id not in id_to_results:
+            id_to_results[unique_id] = remaining_data[idx]
             if isinstance(handler, NUMINATaskHandler):
-                existing_results[unique_id]["messages"] = ""
-            existing_results[unique_id]["prompt"] = (
+                id_to_results[unique_id]["messages"] = ""
+            id_to_results[unique_id]["prompt"] = (
                 conversations[idx][1]["content"]
                 if len(conversations[idx]) > 1
                 else conversations[idx][0]["content"]
             )
-            existing_results[unique_id]["input_conversation"] = conversations[idx]
+            id_to_results[unique_id]["input_conversation"] = conversations[idx]
 
-        existing_results[unique_id]["responses"] = response_entries
-        existing_results[unique_id]["token_usages"] = token_usages
+        id_to_results[unique_id]["responses"] = response_entries
+        id_to_results[unique_id]["token_usages"] = token_usages
 
         all_prompt_tokens.append(response.num_input_tokens)
         all_completion_tokens.append(sum_completion_tokens)
 
-    return existing_results, all_prompt_tokens, all_completion_tokens
+    return id_to_results, all_prompt_tokens, all_completion_tokens
 
 
 def score_responses(
-    handler: TaskHandler, results: Dict[int, Dict[str, Any]], max_workers: int = 32
+    handler: TaskHandler,
+    id_to_results: Dict[int, Dict[str, Any]],
+    max_workers: int = 32,
 ) -> Tuple[float, Dict[int, List[int]], int]:
     """Computes correctness for model responses for the given task
 
-    The 'results' dictionary is assumed to be problem IDs -> { responses: [...], ... },
+    The 'id_to_results' dictionary is assumed to be a mapping between problem ID -> { responses: [...], ... },
+    This is updated in-place.
 
     Returns:
        - overall accuracy
        - `id_to_scores` dictionary mapping IDs -> list of scores (used for metrics like pass@k)
        - total number of responses processed
     """
-    if not results:
+    if not id_to_results:
         return 0.0, {}, 0
 
     total_correct = 0
@@ -300,11 +315,11 @@ def score_responses(
     id_to_scores = {}
 
     # Figure out how many generations per problem
-    N = len(next(iter(results.values()))["responses"])
+    N = len(next(iter(id_to_results.values()))["responses"])
 
     with ProcessPoolExecutor(max_workers=max_workers) as executor:
         future_to_info = {}
-        for unique_id, record in results.items():
+        for unique_id, record in id_to_results.items():
             for i in range(N):
                 content = record["responses"][i]["content"]
                 future = executor.submit(handler.update_results, record, content)
@@ -316,10 +331,12 @@ def score_responses(
             new_response_entry = future.result()
 
             # Update correctness and reason in the original results dict
-            results[unique_id]["responses"][i]["correctness"] = new_response_entry[
-                "correctness"
+            id_to_results[unique_id]["responses"][i]["correctness"] = (
+                new_response_entry["correctness"]
+            )
+            id_to_results[unique_id]["responses"][i]["reason"] = new_response_entry[
+                "reason"
             ]
-            results[unique_id]["responses"][i]["reason"] = new_response_entry["reason"]
 
             # Track scores separately for metrics like pass@k
             # TODO (sumanthrh): this can be improved
@@ -346,29 +363,29 @@ def generate_and_score(
     run_config_dict: dict,
     **kwargs,
 ):
-    result_file = output_dir / "results.json"
-    summary_file = output_dir / "summary.json"
+    result_file = output_dir / RESULTS_FILENAME
+    summary_file = output_dir / SUMMARY_FILENAME
 
     eval_data = handler.load_and_filter_dataset(start, end)
-    results = {}
+    id_to_results = {}
 
-    results, prompt_tokens, completion_tokens = generate_responses_for_dataset(
+    id_to_results, prompt_tokens, completion_tokens = generate_responses_for_dataset(
         handler=handler,
         model_config=model_config,
         backend=backend,
         backend_params=backend_params,
         sampling_params=sampling_params,
         eval_data=eval_data,
-        existing_results=results,
+        id_to_results=id_to_results,
         **kwargs,
     )
 
     accuracy, id_to_scores, total_finish = score_responses(
-        handler, results, max_workers=32
+        handler, id_to_results, max_workers=32
     )
     logger.info(f"Accuracy: {accuracy}")
 
-    num_responses_total = len(results) * sampling_params.params.n
+    num_responses_total = len(id_to_results) * sampling_params.params.n
 
     pass_at_k_metrics = None
     if sampling_params.params.n > 1:
@@ -394,10 +411,8 @@ def generate_and_score(
         pass_at_k=pass_at_k_metrics,
     )
 
-    with open(result_file, "w", encoding="utf-8") as f:
-        json.dump(results, f, indent=4, cls=NumpyEncoder, ensure_ascii=False)
-
     save_summary(summary_file, summary_data)
+    save_results(result_file, id_to_results)
     logger.info(f"Summary saved to {summary_file}")
 
 
@@ -414,19 +429,19 @@ def generate_and_save(
     resume_from: Optional[os.PathLike] = None,
     **kwargs,
 ):
-    breakpoint()
     if resume_from is not None:
         resume_from = Path(resume_from)
-        result_file = resume_from / "results.json"
-        summary_file = resume_from / "summary.json"
+        result_file = resume_from / RESULTS_FILENAME
+        summary_file = resume_from / SUMMARY_FILENAME
         results = load_existing_results(result_file)
     else:
-        results = {}
-        result_file = output_dir / "results.json"
+        results = []
+        result_file = output_dir / RESULTS_FILENAME
         summary_file = output_dir / "summary.json"
 
     eval_data = handler.load_and_filter_dataset(start, end)
 
+    id_to_results = {row["_index"]: row for row in results}
     # Step 3: generate responses (no scoring here)
     results, prompt_tokens, completion_tokens = generate_responses_for_dataset(
         handler=handler,
@@ -435,7 +450,7 @@ def generate_and_save(
         backend_params=backend_params,
         sampling_params=sampling_params,
         eval_data=eval_data,
-        existing_results=results,
+        id_to_results=id_to_results,
         **kwargs,
     )
 
@@ -459,8 +474,7 @@ def generate_and_save(
     )
 
     save_summary(summary_file, summary_data)
-    with open(result_file, "w", encoding="utf-8") as file:
-        json.dump(results, file, ensure_ascii=False, indent=4, cls=NumpyEncoder)
+    save_results(result_file, results)
 
     logger.info(f"Saved results to {result_file}")
     logger.info(f"Saved summary to {summary_file}")
@@ -470,12 +484,13 @@ def score_results(
     handler: TaskHandler, run_dir: Path, run_summary: SummaryResults
 ) -> None:
     # load existing results
-    result_file = run_dir / "results.json"
+    result_file = run_dir / RESULTS_FILENAME
     summary_file = run_dir / "summary.json"
     results = load_existing_results(result_file)
     logger.info(f"Loaded {len(results)} existing results for scoring.")
 
-    accuracy, id_to_scores, total_finish = score_responses(handler, results)
+    id_to_results = {row["_index"]: row for row in results}
+    accuracy, id_to_scores, total_finish = score_responses(handler, id_to_results)
 
     logger.info(f"Accuracy: {accuracy}")
 
@@ -490,6 +505,5 @@ def score_results(
     run_summary.pass_at_k = pass_at_k_metrics
     save_summary(summary_file, run_summary)
 
-    with open(result_file, "w", encoding="utf-8") as f:
-        json.dump(results, f, ensure_ascii=False, indent=4, cls=NumpyEncoder)
+    save_results(result_file, id_to_results)
     logger.info(f"Re-scored results saved to {result_file}")

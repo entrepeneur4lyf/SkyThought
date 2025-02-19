@@ -1,6 +1,7 @@
 from abc import ABC, abstractmethod
 from typing import Any, Dict, List, Optional
 
+import pandas as pd
 import yaml
 from datasets import Dataset as HFDataset
 from datasets import load_dataset
@@ -94,19 +95,19 @@ class TaskHandler(ABC):
     @abstractmethod
     def load_and_filter_dataset(
         self, start, end, split=None, subset=None, difficulty=None
-    ):
+    ) -> pd.DataFrame:
         pass
 
-    def process_remaining_data(self, train_data, results: dict):
+    def process_remaining_data(self, train_data, id_to_results: dict):
         return [
             row.to_dict()
             for _, row in train_data.iterrows()
-            if str(row["_index"]) not in results
+            if int(row["_index"]) not in id_to_results
         ]
 
 
 def add_idx_map(x: dict, idx: int) -> dict:
-    x["_index"] = str(idx)
+    x["_index"] = idx
     return x
 
 

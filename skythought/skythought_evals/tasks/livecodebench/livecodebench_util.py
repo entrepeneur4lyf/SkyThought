@@ -619,4 +619,5 @@ def map_to_example(row):
         "is_stdin": has_test_type(row["public_test_cases"], "stdin"),
         "public_test_cases": row["public_test_cases"],
         "difficulty": row["difficulty"],
+        "_index": row["_index"],
     }

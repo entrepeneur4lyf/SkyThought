@@ -2,6 +2,7 @@ import copy
 from dataclasses import dataclass
 from enum import Enum
 from importlib import resources
+from pathlib import Path
 from typing import Any, Dict, Literal, Optional, Union
 
 import yaml
@@ -81,9 +82,10 @@ class RayLLMEngineArgs(BaseModel):
     )
 
     def get_ray_llm_config(self):
-        with resources.open_text(
-            "skythought_evals.ray_configs", "ray_config.yaml"
-        ) as f:
+        config_path = Path(
+            resources.files("skythought_evals").joinpath("ray_configs/ray_config.yaml")
+        )
+        with open(config_path) as f:
             default_config = yaml.safe_load(f)
 
         if self.tp is not None:

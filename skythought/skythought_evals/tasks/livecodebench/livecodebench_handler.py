@@ -108,7 +108,10 @@ class LiveCodeBenchTaskHandler(TaskHandler):
             writer_batch_size=100,
         )
         # Apply the mapping function
+        # TODO (sumanthrh): See if the appropriate livecodebench columns can be renamed instead and let other columns pass-through
         dataset = dataset.map(
-            map_to_example, remove_columns=dataset.column_names, writer_batch_size=100
+            map_to_example,
+            remove_columns=dataset.column_names.remove("_index"),
+            writer_batch_size=100,
         ).to_pandas()
         return dataset.iloc[start:end] if end > 0 else dataset.iloc[start:]
