@@ -11,6 +11,14 @@ from skythought_evals.util.cli_util import _parse_multi_args, parse_multi_args
         ('{"a": 1, "b": 2}', {"a": 1, "b": 2}),
         ("a=1,b=2", {"a": 1, "b": 2}),
         ("a=1, b=2", {"a": 1, "b": 2}),
+        (
+            "tensor_parallel_size=8,revision=0dccf55,dtype=torch.float32",
+            {
+                "tensor_parallel_size": 8,
+                "revision": "0dccf55",
+                "dtype": "torch.float32",
+            },
+        ),
         ("a=1", {"a": 1}),
         ("", {}),
         ("   ", {}),
@@ -25,7 +33,6 @@ def test__parse_multi_args_valid(input_str, expected):
     [
         "a=1,b",  # Missing value for 'b'
         "a=1,b=two=2",  # Too many '=' signs
-        "a=1, b='unclosed",  # Syntax error
         "not a dict",  # Invalid dictionary string
     ],
 )
@@ -52,7 +59,6 @@ def test_parse_multi_args_valid(input_str, expected):
     [
         "a=1,b",
         "a=1,b=two=2",
-        "a=1, b='unclosed",
         "not a dict",
     ],
 )
@@ -60,6 +66,6 @@ def test_parse_multi_args_invalid(input_str):
     with pytest.raises(ValueError) as exc_info:
         parse_multi_args(input_str)
     assert (
-        f"Excepted comma separated list of parameters arg1=val1,args2=val2 or a dictionary, got invalid argument {input_str}."
+        "Expected comma separated list of parameters arg1=val1,args2=val2 or a dictionary, got invalid argument"
         in str(exc_info.value)
     )

@@ -26,7 +26,7 @@ def _parse_multi_args(vals: str) -> dict:
             k, v = val.split("=")
             try:
                 ret[k] = literal_eval(v)
-            except ValueError:
+            except (ValueError, SyntaxError):
                 # if literal eval fails, propagate as a string
                 ret[k] = v
         return ret

@@ -168,7 +168,13 @@ def get_output_dir(
 def evaluate(
     ctx: typer.Context,
     task: Annotated[
-        str, typer.Option(..., help="Task to process.", case_sensitive=False)
+        # TODO: add choices
+        str,
+        typer.Option(
+            ...,
+            help="Task to process.",
+            case_sensitive=False,
+        ),
     ],
     model: Annotated[str, typer.Option(..., help="The model to run")],
     backend: Annotated[
