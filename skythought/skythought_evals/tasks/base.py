@@ -102,7 +102,7 @@ class TaskHandler(ABC):
         return [
             row.to_dict()
             for _, row in train_data.iterrows()
-            if int(row["_index"]) not in id_to_results
+            if str(row["_index"]) not in id_to_results
         ]
 
 
