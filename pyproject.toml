@@ -22,6 +22,9 @@ dependencies = [
 where = ["skythought"]
 include = ["skythought_evals*"]
 
+[tool.setuptools.package-data]
+skythought_evals = ["*.yaml", "*.yml"]  # Include all YAML files
+
 
 [project.scripts]
 skythought = "skythought_evals.cli:main"

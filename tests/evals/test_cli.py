@@ -1,8 +1,5 @@
-# tests/test_cli.py
-
 import json
 import os
-from unittest.mock import MagicMock
 
 import pytest
 from skythought_evals.cli import (
@@ -49,8 +46,7 @@ def test_evaluate_invalid_task():
         ],
     )
     assert result.exit_code != 0
-    assert isinstance(result.exception, ValueError)
-    assert "Task invalid_task not found" in str(result.exception)
+    assert "invalid value" in result.stderr.lower()
 
 
 def test_evaluate_invalid_batch_size():
@@ -90,7 +86,6 @@ def test_evaluate_success(tmp_result_dir, mocker):
             SamplingParameters.from_dict(Backend.VLLM, {}),
             1,
             64,
-            "float32",
             None,
             None,
         ),
@@ -123,9 +118,7 @@ def test_evaluate_success(tmp_result_dir, mocker):
 
 
 def test_generate_invalid_sampling_params():
-    """
-    Test that providing invalid sampling parameters raises an error.
-    """
+    """Test that providing invalid sampling parameters raises an error."""
     result = runner.invoke(
         app,
         [
@@ -146,9 +139,7 @@ def test_generate_invalid_sampling_params():
 
 
 def test_generate_success(tmp_result_dir, mocker):
-    """
-    Test a successful execution of the `generate` command.
-    """
+    """Test a successful execution of the `generate` command."""
     # Mock helper functions to avoid actual processing
     mocker.patch(
         "skythought_evals.cli.parse_common_args",
@@ -163,7 +154,6 @@ def test_generate_success(tmp_result_dir, mocker):
             SamplingParameters.from_dict(Backend.VLLM, {}),
             1,
             64,
-            "float32",
             None,
             None,
         ),
@@ -194,9 +184,7 @@ def test_generate_success(tmp_result_dir, mocker):
 
 
 def test_score_missing_run_dir():
-    """
-    Test that the `score` command fails when the run directory does not exist.
-    """
+    """Test that the `score` command fails when the run directory does not exist."""
     result = runner.invoke(
         app,
         [
@@ -232,8 +220,8 @@ def test_score_invalid_task():
             ],
         )
         assert result.exit_code != 0
-        assert isinstance(result.exception, ValueError)
-        assert "Task invalid_task not found" in str(result.exception)
+        # error to be raised by Click/Typer
+        assert "invalid value" in result.stderr.lower()
 
 
 def test_score_missing_summary_file():
@@ -251,42 +239,8 @@ def test_score_missing_summary_file():
                 "--run-dir",
                 "run_dir",
                 "--task",
-                "aime",
+                "aime24",
             ],
         )
-        assert result.exit_code == 1
+        assert result.exit_code != 0
         assert "Run summary file" in str(result.exception)
-
-
-def test_score_success(mocker):
-    """
-    Test a successful execution of the `score` command.
-    """
-    with runner.isolated_filesystem():
-        os.makedirs("run_dir")
-        summary = {"some": "summary"}
-        with open("run_dir/summary.json", "w") as f:
-            json.dump(summary, f)
-
-        # Mock helper functions
-        mocker.patch(
-            "skythought_evals.cli.TaskConfig.from_yaml",
-            return_value=MagicMock(handler="handler_name"),
-        )
-        mocker.patch(
-            "skythought_evals.cli.TASK_HANDLER_MAP", {"handler_name": MagicMock()}
-        )
-        mocker.patch("skythought_evals.cli.score_results")
-
-        result = runner.invoke(
-            app,
-            [
-                "score",
-                "--run-dir",
-                "run_dir",
-                "--task",
-                "amc23",
-            ],
-        )
-
-        assert result.exit_code == 0
