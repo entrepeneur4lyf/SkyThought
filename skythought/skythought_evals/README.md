@@ -14,28 +14,23 @@ export OPENAI_API_KEY={openai_api_key}
 
 ### Benchmark Evaluation
 
-Given below are two examples for evaluation. For a detailed walkthrough, please refer to the [example](../../examples/evaluate.ipynb). 
+Given below are two examples for evaluation. For a walkthrough on the basics, please refer to the [example](../../examples/evaluate.ipynb). 
 
 ```shell
-skythought evaluate --model NovaSky-AI/Sky-T1-32B-Preview --task aime  --backend vllm --backend-args tensor_parallel_size=8  --sampling-params temperature=0.6,top_p=0.95 --n 8
+skythought evaluate --model NovaSky-AI/Sky-T1-32B-Preview --task aime  --backend vllm --backend-args tensor_parallel_size=8  --sampling-params temperature=0.6,top_p=0.95 --n 8 --result-dir ./
 skythought evaluate --model NovaSky-AI/Sky-T1-32B-Preview --task gpqa_diamond --backend vllm --backend-args tensor_parallel_size=8 --sampling-params temperature=0.6,top_p=0.95 --n 8
 ```
 
 **Note**: The `GPQADiamond` dataset is gated and requires first receiving access at this Huggingface [link](https://huggingface.co/datasets/Idavidrein/gpqa) (which is granted immediately), then logging into your Huggingface account in your terminal session with `huggingface-cli login`. 
 
 
-#### Example Usage
-```shell
-skythought evaluate --model Qwen/QwQ-32B-Preview --task aime --backend ray --backend-args tensor_parallel_size=8 --result-dir ./
-```
-    
-The results are saved in a folder in the `result-dir`:
+The results will be saved in a folder in `result-dir`:
 
 ```bash
 result-dir/
 ├── Qwen_QwQ-32B-Preview_aime_myHash
 │   ├── results.json # contains the full results for the benchmark
-│   └── summary.json # contains summary of the run with configuration metrics
+│   └── summary.json # contains summary of the run with configuration and metrics
 ```
 
 ### Scaling evaluation with Ray
@@ -51,11 +46,15 @@ By default, we make use of the configuration in [ray_configs/ray_config.yaml](./
 
 ### Optimized settings for 32B and 7B models
 
-The following are optimized settings on a 8xH100 or a 8xA100 node. 
+The following are optimized settings on a 8xH100 or a 8xA100 node. We recommend using `ray` backend for best performance. 
 
-For 32B models, we recommend using `--use-ray` and the default ray configuration for best performance. 
+For 32B models, we recommend using the default backend configuration for best performance. 
 
-For 7B models, we recommend adding `--tp 1` and `--num_replicas 8` for best performance. FOr example, the previous command will change to:
+```shell
+skythought evaluate --model Qwen/QwQ-32B-Preview --task aime24 --backend ray --result-dir ./
+```
+
+For 7B models, we recommend using `tensor_parallel_size=1` and `num_replicas=8` for best performance. FOr example, the previous command will change to:
 
 ```shell
 skythought evaluate --model Qwen/Qwen2-7B-Instruct --task math500 --backend ray --backend-args tensor_parallel_size=1,num_replicas=8 --result-dir ./
@@ -63,7 +62,7 @@ skythought evaluate --model Qwen/Qwen2-7B-Instruct --task math500 --backend ray 
 
 #### Multi-node inference
 
-Note that if you have a ray cluster setup, you can scale the number of replicas as needed with `--ray-config-num-replicas` to make full use of your cluster. Make sure to execute the script on the head node and ensure that `--result-dir` is a valid directory that the head node can write to. 
+Note that if you have a ray cluster setup, you can scale the number of replicas as needed with `num_replicas` argument in `backend-args` to make full use of your cluster. Make sure to execute the script on the head node and ensure that `--result-dir` is a valid directory that the head node can write to. 
 
 ### Best-of-N Evaluation
 

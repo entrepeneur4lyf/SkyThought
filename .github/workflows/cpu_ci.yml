@@ -27,7 +27,7 @@ jobs:
       - name: Install dependencies
         run: python -m pip install --upgrade pip setuptools wheel pre-commit
       - name: Install skythought_evals
-        run: python -m pip install -e .
+        run: python -m pip install -e ".[dev]"
       - name: Run pre-commit hooks
         run: pre-commit run --all-files --config .pre-commit-config.yaml
   
@@ -47,6 +47,6 @@ jobs:
       - name: Install dependencies
         run: python -m pip install --upgrade pip setuptools wheel pre-commit pytest
       - name: Install skythought_evals
-        run: python -m pip install -e .
+        run: python -m pip install -e ".[dev]"
       - name: Run tests
         run: python -m pytest tests/
