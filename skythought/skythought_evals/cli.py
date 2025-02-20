@@ -379,11 +379,16 @@ def generate(
     system_prompt_name: Annotated[
         str,
         typer.Option(
-            help="System prompt template name to be used.",
+            help="System prompt template to use, overriding any pre-configured system prompt for this model.",
             click_type=click.Choice(get_system_prompt_keys()),
         ),
     ] = None,
-    system_prompt: Annotated[str, typer.Option(help="System prompt to use")] = None,
+    system_prompt: Annotated[
+        str,
+        typer.Option(
+            help="System prompt to use, overriding any pre-configured system prompt for this model."
+        ),
+    ] = None,
     n: Annotated[
         int, typer.Option(help="Number of samples generated per problem.")
     ] = None,
@@ -402,7 +407,12 @@ def generate(
         ),
     ] = 64,
     start: Annotated[int, typer.Option(help="Start index for the dataset.")] = 0,
-    end: Annotated[int, typer.Option(help="End index for the dataset.")] = -1,
+    end: Annotated[
+        int,
+        typer.Option(
+            help="End index for the dataset (non-inclusive). If a negative value is provided, we use all the samples."
+        ),
+    ] = -1,
     resume_from: Annotated[
         str, typer.Option(help="Resume from a previous run.")
     ] = None,

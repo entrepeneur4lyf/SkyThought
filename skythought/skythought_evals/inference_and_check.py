@@ -4,7 +4,6 @@ import json
 import logging
 import math
 import os
-import sys
 from concurrent.futures import ProcessPoolExecutor, as_completed
 from functools import partial
 from pathlib import Path
@@ -205,8 +204,6 @@ def inference(
         responses = [Response.from_vllm_response(response) for response in responses]
     else:
         raise ValueError(f"Invalid backend: {backend}")
-    # flush logs to stdout
-    sys.stdout.flush()
 
     return responses
 
