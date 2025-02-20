@@ -75,7 +75,9 @@ class Response:
         response_texts = [
             response.outputs[i].text for i in range(len(response.outputs))
         ]
-        num_completion_tokens = [len(s) for s in response_texts]
+        num_completion_tokens = [
+            len(response.outputs[i].token_ids) for i in range(len(response.outputs))
+        ]
         return cls(
             response=response_texts,
             num_completion_tokens=num_completion_tokens,
