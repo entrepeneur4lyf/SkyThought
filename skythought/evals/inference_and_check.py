@@ -13,6 +13,9 @@ import numpy as np
 import pandas as pd
 import ray
 from openai import OpenAI
+from tqdm import tqdm
+from vllm import LLM
+
 from skythought.evals.batch import Pipeline, init_engine_from_config
 from skythought.evals.batch.env_config import EnvConfig
 from skythought.evals.batch.workload import EvalWorkload
@@ -32,8 +35,6 @@ from skythought.evals.tasks import (
 from skythought.evals.util.metrics import pass_at_k
 from skythought.evals.util.response import Response, SingleParsedResponse
 from skythought.evals.util.results import SummaryResults, save_summary
-from tqdm import tqdm
-from vllm import LLM
 
 logger = logging.getLogger(__name__)
 module_dir = os.path.dirname(os.path.abspath(__file__))

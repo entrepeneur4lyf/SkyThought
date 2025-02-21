@@ -6,6 +6,8 @@ from typing import Tuple
 
 import click
 import typer
+from typing_extensions import Annotated
+
 from skythought.evals.common.entities import (
     Backend,
     BackendParameters,
@@ -21,7 +23,6 @@ from skythought.evals.tasks import TASK_HANDLER_MAP, TASK_NAMES_TO_YAML, TaskCon
 from skythought.evals.util.cli_util import get_deterministic_hash, parse_multi_args
 from skythought.evals.util.common import set_seed
 from skythought.evals.util.results import SummaryResults
-from typing_extensions import Annotated
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)

@@ -3,6 +3,7 @@ import multiprocessing
 from multiprocessing import Manager
 
 import numpy as np
+
 from skythought.evals.util.common import has_code
 
 from ..base import TaskHandler
