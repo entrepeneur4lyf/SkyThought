@@ -17,13 +17,19 @@ dependencies = [
     "setuptools",
     "typer",
 ]
+license = { file = "LICENSE" }
+
+[build-system]
+requires = ["setuptools>=61", "wheel"]
+build-backend = "setuptools.build_meta"
+
 
 [tool.setuptools.packages.find]
 where = ["skythought"]
 include = ["skythought_evals*"]
 
 [tool.setuptools.package-data]
-skythought_evals = ["*.yaml", "*.yml"]  # Include all YAML files
+skythought_evals = ["**/*.yaml", "**/*.yml"]  # Include all YAML files
 
 
 [project.scripts]
