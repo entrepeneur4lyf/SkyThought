@@ -1,7 +1,7 @@
 [project]
-name = "skythought"
+name = "skythought_evals"
 version = "0.1.0"
-description = "Skythought Evals"
+description = "Skythought Evals: Evaluation and Data Generation Tools for Reasoning Models"
 authors = [
     { name = "NovaSky Team"}
 ]
