@@ -90,7 +90,7 @@ def fetch_response_openai(
             max_completion_tokens=sampling_params.max_tokens,
         )
     else:
-        if sampling_params.reasoning_effort is not None:
+        if sampling_params.reasoning_effort:
             raise ValueError("Reasoning effort is only supported for reasoning models")
         response = client.chat.completions.create(
             model=model_config.model_id,
