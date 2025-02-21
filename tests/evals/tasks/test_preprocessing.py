@@ -1,5 +1,6 @@
 import pytest
-from skythought_evals.tasks import MMLUTaskHandler, TaskConfig
+
+from skythought.evals.tasks import MMLUTaskHandler, TaskConfig
 
 SYSTEM_PROMPT = "Please answer the following question:"
 

@@ -1,5 +1,6 @@
 import pytest
-from skythought_evals.util.cli_util import _parse_multi_args, parse_multi_args
+
+from skythought.evals.util.cli_util import _parse_multi_args, parse_multi_args
 
 
 # Tests for _parse_multi_args

@@ -1,5 +1,6 @@
 import pytest
-from skythought_evals.util.math_parsing_util import (
+
+from skythought.evals.util.math_parsing_util import (
     choice_answer_clean,
     extract_answer,
     get_multiple_choice_answer,

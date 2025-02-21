@@ -1,5 +1,6 @@
 import pytest
-from skythought_evals.tasks.math.math_handler import MathTaskHandler
+
+from skythought.evals.tasks.math.math_handler import MathTaskHandler
 
 
 class MockTaskConfig:

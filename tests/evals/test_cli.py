@@ -2,12 +2,13 @@ import json
 import os
 
 import pytest
-from skythought_evals.cli import (
+from typer.testing import CliRunner
+
+from skythought.evals.cli import (
     Backend,
     SamplingParameters,
     app,
 )
-from typer.testing import CliRunner
 
 runner = CliRunner(mix_stderr=False)
 
@@ -74,7 +75,7 @@ def test_evaluate_success(tmp_result_dir, mocker):
     """Test a successful execution of the `evaluate` command."""
     # Mock helper functions to avoid actual processing
     mocker.patch(
-        "skythought_evals.cli.parse_common_args",
+        "skythought.evals.cli.parse_common_args",
         return_value=(
             "amc23",
             {},
@@ -90,9 +91,9 @@ def test_evaluate_success(tmp_result_dir, mocker):
             None,
         ),
     )
-    mocker.patch("skythought_evals.cli.get_run_config", return_value={})
-    mocker.patch("skythought_evals.cli.get_output_dir", return_value=tmp_result_dir)
-    mocker.patch("skythought_evals.cli.generate_and_score")
+    mocker.patch("skythought.evals.cli.get_run_config", return_value={})
+    mocker.patch("skythought.evals.cli.get_output_dir", return_value=tmp_result_dir)
+    mocker.patch("skythought.evals.cli.generate_and_score")
 
     # Ensure the result directory does not exist initially
     assert not tmp_result_dir.exists()
@@ -142,7 +143,7 @@ def test_generate_success(tmp_result_dir, mocker):
     """Test a successful execution of the `generate` command."""
     # Mock helper functions to avoid actual processing
     mocker.patch(
-        "skythought_evals.cli.parse_common_args",
+        "skythought.evals.cli.parse_common_args",
         return_value=(
             "amc23",
             {},
@@ -158,9 +159,9 @@ def test_generate_success(tmp_result_dir, mocker):
             None,
         ),
     )
-    mocker.patch("skythought_evals.cli.get_run_config", return_value={})
-    mocker.patch("skythought_evals.cli.get_output_dir", return_value=tmp_result_dir)
-    mocker.patch("skythought_evals.cli.generate_and_save")
+    mocker.patch("skythought.evals.cli.get_run_config", return_value={})
+    mocker.patch("skythought.evals.cli.get_output_dir", return_value=tmp_result_dir)
+    mocker.patch("skythought.evals.cli.generate_and_save")
 
     result = runner.invoke(
         app,

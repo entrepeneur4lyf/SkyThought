@@ -1,5 +1,6 @@
 import pytest
-from skythought_evals.util.common import has_code
+
+from skythought.evals.util.common import has_code
 
 
 @pytest.mark.parametrize(
