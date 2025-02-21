@@ -4,7 +4,7 @@ import multiprocessing
 from multiprocessing import Manager
 
 import numpy as np
-from skythought_evals.util.common import has_code
+from skythought.evals.util.common import has_code
 
 from ..apps.apps_util import run_test as apps_run_test
 from ..base import TaskHandler

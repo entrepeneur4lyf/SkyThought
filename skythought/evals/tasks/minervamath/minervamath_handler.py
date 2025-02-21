@@ -1,4 +1,4 @@
-from skythought_evals.util.math_parsing_util import (
+from skythought.evals.util.math_parsing_util import (
     extract_answer,
     math_equal,
     strip_answer_string,

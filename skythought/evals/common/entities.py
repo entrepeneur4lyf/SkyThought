@@ -89,7 +89,7 @@ class RayLLMEngineArgs(BaseModel):
 
     def get_ray_llm_config(self):
         config_path = Path(
-            resources.files("skythought_evals").joinpath("ray_configs/ray_config.yaml")
+            resources.files("skythought.evals").joinpath("ray_configs/ray_config.yaml")
         )
         with open(config_path) as f:
             default_config = yaml.safe_load(f)

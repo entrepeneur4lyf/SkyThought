@@ -1,8 +1,8 @@
 from typing import Any, Dict
 
 from datasets import load_dataset
-from skythought_evals.util.common import TimeoutException, timeout
-from skythought_evals.util.math_parsing_util import (
+from skythought.evals.util.common import TimeoutException, timeout
+from skythought.evals.util.math_parsing_util import (
     extract_answer,
     math_equal,
     strip_answer_string,

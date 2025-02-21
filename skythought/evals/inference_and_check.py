@@ -13,25 +13,25 @@ import numpy as np
 import pandas as pd
 import ray
 from openai import OpenAI
-from skythought_evals.batch import Pipeline, init_engine_from_config
-from skythought_evals.batch.env_config import EnvConfig
-from skythought_evals.batch.workload import EvalWorkload
-from skythought_evals.common.entities import (
+from skythought.evals.batch import Pipeline, init_engine_from_config
+from skythought.evals.batch.env_config import EnvConfig
+from skythought.evals.batch.workload import EvalWorkload
+from skythought.evals.common.entities import (
     Backend,
     BackendParameters,
     OpenAISamplingParams,
     RayLLMEngineArgs,
     SamplingParameters,
 )
-from skythought_evals.models import ModelConfig
-from skythought_evals.tasks import (
+from skythought.evals.models import ModelConfig
+from skythought.evals.tasks import (
     ConversationType,
     NUMINATaskHandler,
     TaskHandler,
 )
-from skythought_evals.util.metrics import pass_at_k
-from skythought_evals.util.response import Response, SingleParsedResponse
-from skythought_evals.util.results import SummaryResults, save_summary
+from skythought.evals.util.metrics import pass_at_k
+from skythought.evals.util.response import Response, SingleParsedResponse
+from skythought.evals.util.results import SummaryResults, save_summary
 from tqdm import tqdm
 from vllm import LLM
 

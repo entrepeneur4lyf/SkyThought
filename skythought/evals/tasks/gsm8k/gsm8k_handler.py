@@ -1,7 +1,7 @@
 import re
 from typing import Any, Dict
 
-from skythought_evals.util.math_parsing_util import extract_answer
+from skythought.evals.util.math_parsing_util import extract_answer
 
 from ..base import TaskConfig, TaskHandler
 

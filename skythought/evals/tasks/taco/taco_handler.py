@@ -3,7 +3,7 @@ import multiprocessing
 from multiprocessing import Manager
 
 import numpy as np
-from skythought_evals.util.common import has_code
+from skythought.evals.util.common import has_code
 
 from ..base import TaskHandler
 from .taco_util import run_test as taco_run_test

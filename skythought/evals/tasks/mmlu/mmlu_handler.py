@@ -1,4 +1,4 @@
-from skythought_evals.util.math_parsing_util import (
+from skythought.evals.util.math_parsing_util import (
     get_multiple_choice_answer,
     mmlu_pro_extract_answer,
 )

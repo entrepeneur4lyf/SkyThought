@@ -1,6 +1,6 @@
 import random
 
-from skythought_evals.util.math_parsing_util import get_multiple_choice_answer
+from skythought.evals.util.math_parsing_util import get_multiple_choice_answer
 
 from ..base import TaskHandler
 

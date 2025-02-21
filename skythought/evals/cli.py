@@ -6,21 +6,21 @@ from typing import Tuple
 
 import click
 import typer
-from skythought_evals.common.entities import (
+from skythought.evals.common.entities import (
     Backend,
     BackendParameters,
     SamplingParameters,
 )
-from skythought_evals.inference_and_check import (
+from skythought.evals.inference_and_check import (
     generate_and_save,
     generate_and_score,
     score_results,
 )
-from skythought_evals.models import ModelConfig, get_system_prompt_keys
-from skythought_evals.tasks import TASK_HANDLER_MAP, TASK_NAMES_TO_YAML, TaskConfig
-from skythought_evals.util.cli_util import get_deterministic_hash, parse_multi_args
-from skythought_evals.util.common import set_seed
-from skythought_evals.util.results import SummaryResults
+from skythought.evals.models import ModelConfig, get_system_prompt_keys
+from skythought.evals.tasks import TASK_HANDLER_MAP, TASK_NAMES_TO_YAML, TaskConfig
+from skythought.evals.util.cli_util import get_deterministic_hash, parse_multi_args
+from skythought.evals.util.common import set_seed
+from skythought.evals.util.results import SummaryResults
 from typing_extensions import Annotated
 
 logging.basicConfig(level=logging.INFO)

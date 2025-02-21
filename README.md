@@ -77,6 +77,7 @@ We support a wide variety of datasets in mathematics, science and coding:
 - MMLU Pro
 - MinervaMath
 - GSM8K
+- AIME'25
 
 For more details, please refer to our [evaluation guide](examples/evaluate.ipynb) and the [README](skythought/skythought_evals/README.md).
 

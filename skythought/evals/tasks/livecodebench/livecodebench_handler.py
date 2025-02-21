@@ -2,7 +2,7 @@ import copy
 from typing import Dict
 
 from datasets import Dataset as HFDataset
-from skythought_evals.util.common import has_code
+from skythought.evals.util.common import has_code
 
 from ..base import TaskHandler
 from .livecodebench_util import (
