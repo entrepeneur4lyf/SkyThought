@@ -46,21 +46,31 @@ We open source the code and scripts we used for data curation, training, and eva
 
 ## Usage
 
-First, clone the repository and install the package
+You can install the latest release from PyPI or from [source](#installing-from-source):
 
 ```shell
-git clone https://github.com/NovaSky-AI/SkyThought.git
-cd SkyThought
-# installs shown for uv
-uv venv python==3.10
-source .venv/bin/activate
-uv pip install -e .
+pip install skythought
+```
+
+### Installing from source
+
+```shell
+# Clone the repository
+!git clone https://github.com/NovaSky-AI/SkyThought.git
+!cd SkyThought
+
+# Create and activate a virtual environment (using uv here)
+!uv venv --python 3.10
+!source .venv/bin/activate
+
+# Install the package in editable mode
+!uv pip install -e .
 ```
 
 Running evaluation is as simple as: 
 
 ```bash
-skythought evaluate --model NovaSky-AI/Sky-T1-32B-Preview --task aime
+skythought evaluate --model NovaSky-AI/Sky-T1-32B-Preview --task aime24
 ```
 
 We support a wide variety of datasets in mathematics, science and coding:
@@ -80,7 +90,7 @@ We support a wide variety of datasets in mathematics, science and coding:
 - GSM8K
 - AIME'25
 
-For more details, please refer to our [evaluation guide](examples/evaluate.ipynb) and the [README](skythought/evals/README.md).
+For more details, please refer to our [evaluation guide](examples/evaluate.ipynb) and the [evaluation README](skythought/evals/README.md).
 
 
 ### Evaluation results
