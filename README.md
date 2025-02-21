@@ -56,15 +56,15 @@ pip install skythought
 
 ```shell
 # Clone the repository
-!git clone https://github.com/NovaSky-AI/SkyThought.git
-!cd SkyThought
+git clone https://github.com/NovaSky-AI/SkyThought.git
+cd SkyThought
 
 # Create and activate a virtual environment (using uv here)
-!uv venv --python 3.10
-!source .venv/bin/activate
+uv venv --python 3.10
+source .venv/bin/activate
 
 # Install the package in editable mode
-!uv pip install -e .
+uv pip install -e .
 ```
 
 Running evaluation is as simple as: 
