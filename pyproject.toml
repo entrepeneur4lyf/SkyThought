@@ -1,6 +1,6 @@
 [project]
 name = "skythought"
-version = "0.1.1"
+version = "0.1.0"
 description = "Skythought Evals: Evaluation and Data Generation Tools for Reasoning Models"
 authors = [
     { name = "NovaSky Team" }
@@ -29,6 +29,9 @@ build-backend = "setuptools.build_meta"
 
 [tool.setuptools]
 include-package-data = true  # Ensures package_data is included in wheel
+
+[tool.ruff]
+line-length = 160
 
 [tool.setuptools.packages.find]
 where = ["."]
