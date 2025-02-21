@@ -3,10 +3,11 @@ import json
 import os
 import random
 
-from skythought_evals.models import ModelConfig
-from skythought_evals.util.math_parsing_util import strip_answer_string
 from tqdm import tqdm
 from vllm import LLM, SamplingParams
+
+from skythought.evals.models import ModelConfig
+from skythought.evals.util.math_parsing_util import strip_answer_string
 
 SUBPROBLEM_SPLIT_PROMPT = """
   You are given a reasoning sequence that attempts to solve a math problem.

@@ -37,7 +37,7 @@
 
 We open source the code and scripts we used for data curation, training, and evaluation for Sky-T1-32B-Preview, you can find more details in each directory.
 - [`recipes`](./recipes/): Recipes - data curation steps and training strategies - for building our models `Sky-T1-32B-Flash`, `Sky-T1-32B-Preview` and `Sky-T1-7B` series. 
-- [`skythought/skythought_evals`](./skythought/skythought_evals/): Our data generation and evaluation library. 
+- [`skythought/evals`](./skythought/evals/): Our data generation and evaluation library. 
 - [`skythought/train`](./skythought/train/): Training scripts for Sky-T1. We use [Llama-Factory](https://github.com/hiyouga/LLaMA-Factory) to perform training. 
 - [`skythought/skythought-rl`](./skythought/skythought-rl/): RL training code for Sky-T1-7B and Sky-T1-mini.
 
@@ -79,7 +79,7 @@ We support a wide variety of datasets in mathematics, science and coding:
 - GSM8K
 - AIME'25
 
-For more details, please refer to our [evaluation guide](examples/evaluate.ipynb) and the [README](skythought/skythought_evals/README.md).
+For more details, please refer to our [evaluation guide](examples/evaluate.ipynb) and the [README](skythought/evals/README.md).
 
 
 ### Evaluation results
@@ -112,7 +112,7 @@ We also evaluate on non-reasoning benchmarks (these are benchmarks for instructi
 | BFCL-v3 | 53.18 | **58.92** | 17.41 | [BFCL](https://github.com/ShishirPatil/gorilla/tree/main/berkeley-function-call-leaderboard) |
 | Arena-Hard | **74.79** | 66.51 | 52.6 | [Arena-Hard-Auto](https://github.com/lmarena/arena-hard-auto) |
 
-For more details, refer [here](./skythought/skythought_evals/base_instruct_evals.md).
+For more details, refer [here](./skythought/evals/base_instruct_evals.md).
 
 ## Fully Open-source: Driving Progress Together
 We believe that open-source collaboration drives progress, and with Sky-T1-32B-Preview, we are fully committed to empowering the community. We open-source all details (i.e., data, codes, model weights) to enable the community to replicate and improve on our results *easily*:

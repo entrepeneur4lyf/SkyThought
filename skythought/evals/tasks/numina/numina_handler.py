@@ -64,8 +64,15 @@ class NUMINATaskHandler(TaskHandler):
     def load_and_filter_dataset(
         self, start, end, split=None, subset=None, difficulty=None
     ):
-        dataset = self.load_dataset(subset=subset, split=split).to_pandas()
+        dataset = self.load_dataset(subset=subset, split=split)
 
+        if "source" in self.task_config.preprocess_config:
+            source = self.task_config.preprocess_config["source"]
+            dataset = dataset.filter(lambda x: x["source"] == source)
+
+        dataset = dataset.to_pandas()
+        # TODO (sumanthrh): this is hacky for numina. the start and end filter should be applied at the very end
+        # it is kept here for consistency with the original code.
         dataset = dataset.iloc[start:end] if end > 0 else dataset.iloc[start:]
         dataset = dataset[dataset["solution"].str.contains("boxed", na=False)]
 

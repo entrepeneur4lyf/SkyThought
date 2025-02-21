@@ -6,7 +6,7 @@ For a detailed breakdown of the duration curation steps and training methodology
 
 ## Setup
 
-Make sure you have installed the `skythought-evals` package as outlined in the [README.md](/README.md#usage). All the data curation commands are provided from the root directory of the repo.
+Make sure you have installed the `skythought` package as outlined in the [README.md](/README.md#usage). All the data curation commands are provided from the root directory of the repo.
 
 
 ## Stage 1: Data Generation
