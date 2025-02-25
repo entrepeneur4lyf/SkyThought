@@ -1,3 +1,5 @@
+from typing import List
+
 from ..util.math_parsing_util import extract_answer, math_equal
 from .base import Scorer
 
@@ -39,10 +41,14 @@ class MathVerifyScorer(Scorer):
                 "math_verify is not installed. Please install it with `pip install math_verify`."
             )
 
-    def __call__(self, row: dict) -> bool:
+    def score(self, row: dict) -> bool:
         try:
             pred = mv_parse(row[self.response_key])
             ref = mv_parse(row[self.answer_key])
         except Exception:
             return False
         return mv_verify(pred, ref)
+
+    @property
+    def expected_keys(self) -> List[str]:
+        return [self.response_key, self.answer_key]
