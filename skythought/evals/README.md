@@ -117,7 +117,7 @@ We've noticed that it can be hard to reproduce results in reasoning benchmarks. 
  We recommend to run evaluation benchmarks at full precision, i.e float32 to avoid this. In full-precision, evaluation results should be robust to changes in batch size, tensor parallel size, version differences, etc.
 
 
-## Key Concepts Guide
+## Key Concepts
 
 ### Tasks
 
@@ -139,7 +139,7 @@ To add a new task `mytask`:
 
 A Model consists of the model ID and templating configuration. This configuration optionally contains the system prompt and an assistant prefill message. Different reasoning models use their own system prompt, and some perform best when the response is prefilled with special tokens. 
 
-We store a list of system prompt templates as well as pre-configured models [here](./models/model_configs.yaml). 
+We store our pre-configured models as well as a list of system prompt templates [here](./models/model_configs.yaml). 
 
 ### Backend
 
@@ -149,4 +149,8 @@ The Backend is concerned with how the LLM instance is created and queried. For f
 
 The Backend also consists of configuration at instantiation (ex; the data type for the model), along with sampling parameters during generation (temperature, max tokens, etc).
 
-
+During evaluation, the above tie in together and the flow is as follows: 
+1. Load dataset and create conversations based on the Task and Model specified by the user
+2. Generate model responses from the Backend based on the provided sampling parameters
+3. Score model responses based on the Task 
+4. Output final results
