@@ -2,6 +2,7 @@
 This is the recipe for data curation for the Sky T1 Preview model . 
 """
 
+import argparse
 import os
 
 import datasets
@@ -18,6 +19,10 @@ from .postprocess import APPSScorer, TACOScorer, convert_to_sharegpt_format
 from .preprocess import APPSPreprocessor, NUMINAPreprocessor, TACOPreprocessor
 from .prompts import CONVERT_PROMPT
 
+parser = argparse.ArgumentParser()
+parser.add_argument("--as-test", action="store_true")
+args = parser.parse_args()
+
 SYSTEM_PROMPT = "You are a helpful and harmless assistant. You are Qwen developed by Alibaba. You should think step-by-step."  # noqa: E501
 
 # 1. Load datasets
@@ -26,7 +31,6 @@ taco_ds_medium = datasets.load_dataset(
     "BAAI/TACO", split="test", name="MEDIUM", streaming=True
 )
 numina_ds = datasets.load_dataset("AI-MO/NuminaMath-CoT", split="train", streaming=True)
-
 
 # convert all to ray dataset
 apps_ds = ray.data.from_huggingface(apps_ds)
@@ -38,6 +42,14 @@ numina_ds = ray.data.from_huggingface(numina_ds)
 numina_ds_amc_aime = numina_ds.filter(lambda x: x["source"] == "amc_aime")
 numina_ds_olympiads = numina_ds.filter(lambda x: x["source"] == "olympiads")
 numina_ds_math = numina_ds.filter(lambda x: x["source"] == "math")
+
+
+if args.as_test:
+    apps_ds = apps_ds.limit(100)
+    taco_ds_medium = taco_ds_medium.limit(100)
+    numina_ds_amc_aime = numina_ds_amc_aime.limit(100)
+    numina_ds_olympiads = numina_ds_olympiads.limit(100)
+    numina_ds_math = numina_ds_math.limit(100)
 
 # 2. Get model responses for each of the datasets
 datasets = [

@@ -7,7 +7,12 @@ from .base import Scorer
 
 
 class GSM8KScorer(Scorer):
-    """Scorer for GSM8K based on the `math_equal` function from Qwen Math"""
+    """Scorer for GSM8K based on the `math_equal` function from Qwen Math
+
+    Args:
+        response_column: The column name for the model generated response.
+        answer_column: The column name for the ground truth answer.
+    """
 
     SCORE_COLUMN = "gsm8k_score"
     INVALID_ANS = "[invalid]"
@@ -15,12 +20,7 @@ class GSM8KScorer(Scorer):
     ANS_RE = re.compile(r"((-?[$0-9.,]{2,})|(-?[0-9]+))")
 
     def __init__(self, response_column: str, answer_column: str):
-        """Initializes the GSM8KScorer.
 
-        Args:
-            response_column: The column name for the model generated response.
-            answer_column: The column name for the ground truth answer.
-        """
         self.response_column = response_column
         self.answer_column = answer_column
 

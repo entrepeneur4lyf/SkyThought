@@ -12,17 +12,16 @@ except ImportError:
 
 
 class MathEqualScorer(Scorer):
-    """Scorer for math based on the `math_equal` function from Qwen Math"""
+    """Scorer for math based on the `math_equal` function from Qwen Math
+
+    Args:
+        response_column: The column name for the model generated response.
+        answer_column: The column name for the ground truth answer.
+    """
 
     SCORE_COLUMN = "math_equal_score"
 
     def __init__(self, response_column: str, answer_column: str):
-        """Initializes the MathEqualScorer.
-
-        Args:
-            response_column: The column name for the model generated response.
-            answer_column: The column name for the ground truth answer.
-        """
         self.response_column = response_column
         self.answer_column = answer_column
 
@@ -40,7 +39,12 @@ class MathEqualScorer(Scorer):
 
 
 class MathVerifyScorer(Scorer):
-    """Scorer for math based on the `math_verify` function from HuggingFace"""
+    """Scorer for math based on the `math_verify` function from HuggingFace
+
+    Args:
+        response_column: The column name for the model generated response.
+        answer_column: The column name for the ground truth answer.
+    """
 
     SCORE_COLUMN = "math_verify_score"
 

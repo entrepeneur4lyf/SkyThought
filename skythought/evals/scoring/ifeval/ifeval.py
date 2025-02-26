@@ -29,8 +29,16 @@ def process_results(doc, response):
 
 
 class IfEvalScorer(Scorer):
-    """
-    Scorer for the IF-Eval dataset. Requires the dataset to be in the format as https://huggingface.co/datasets/google/IFEval
+    """Scorer for the IF-Eval task
+
+    For the IFEval dataset format, see https://huggingface.co/datasets/google/IFEval
+
+    Args:
+        instruction_ids_column: The column name for the list of instruction ids (str).
+        prompt_column: The column name for the prompt (str).
+        keyword_args_column: The column name for the keyword arguments to the instruction builder (str).
+        key_column: The column name for the unique identifier (str).
+        response_column: The column name for the response (str).
     """
 
     SCORE_COLUMN = "ifeval_score"
@@ -43,15 +51,6 @@ class IfEvalScorer(Scorer):
         key_column: str = "key",
         response_column: str = "response",
     ):
-        """Initializes the IfEvalScorer.
-
-        Args:
-            instruction_ids_column: The column name for the list of instruction ids.
-            prompt_column: The column name for the prompt.
-            keyword_args_column: The column name for the keyword arguments to the instruction builder.
-            key_column: The column name for the unique identifier.
-            response_column: The column name for the response.
-        """
         self.instruction_ids_column = instruction_ids_column
         self.response_column = response_column
 

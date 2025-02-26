@@ -3,9 +3,7 @@ from typing import Any, AsyncIterator, Dict
 
 
 class Scorer(ABC):
-    """
-    Abstract base class for scorers.
-    """
+    """Abstract base class for scorers."""
 
     SCORE_COLUMN = "score"
 

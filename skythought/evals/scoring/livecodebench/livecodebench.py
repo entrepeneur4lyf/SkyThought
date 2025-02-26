@@ -1,6 +1,6 @@
 import asyncio
 import copy
-from typing import Any, AsyncIterator, Dict, List, Tuple
+from typing import Any, AsyncIterator, Dict, List, Literal, Tuple
 
 from skythought.evals.util.common import has_code
 
@@ -9,11 +9,27 @@ from .livecodebench_util import (
     _ray_wrapper,
     has_test_type,
     post_process_code,
+    unsafe_lcb_runTests_mp,
     unsafe_lcb_runTests_ray,
 )
 
 
 class LiveCodeBenchScorer(Scorer):
+    """Scorer for LiveCodeBench
+
+    For the LiveCodeBench dataset format, see https://huggingface.co/datasets/livecodebench/code_generation_lite
+
+    Args:
+        question_content_column: The column name for the question (str).
+        private_test_cases_column: The column name for the private test cases (str).
+        public_test_cases_column: The column name for the public test cases (str).
+        starter_code_column: The column name for the starter code (str).
+        difficulty_column: The column name for the difficulty level (str).
+        question_id_column: The column name for the question id (str).
+        response_column: The column name for the response (str).
+        backend: The backend to use for scoring. Supports "ray" or "mp" (str).
+    """
+
     TIMEOUT = 6
     SCORE_COLUMN = "livecodebench_score"
 
@@ -26,7 +42,9 @@ class LiveCodeBenchScorer(Scorer):
         difficulty_column: str = "difficulty",
         question_id_column: str = "question_id",
         response_column: str = "response",
+        backend: Literal["ray", "mp"] = "ray",
     ):
+
         self.question_content_column = question_content_column
         self.private_test_cases_column = private_test_cases_column
         self.public_test_cases_column = public_test_cases_column
@@ -34,6 +52,7 @@ class LiveCodeBenchScorer(Scorer):
         self.difficulty_column = difficulty_column
         self.question_id_column = question_id_column
         self.response_column = response_column
+        self.backend = backend
 
     def score(self, row: dict) -> Dict[str, Any]:
         row = self.map_to_example(row)
@@ -46,13 +65,22 @@ class LiveCodeBenchScorer(Scorer):
             last_code = code_filter_result[-1]
             problem_to_check = copy.deepcopy(row)
 
-        result_list = unsafe_lcb_runTests_ray(
-            problem_to_check,
-            post_process_code(last_code),
-            self.TIMEOUT,
-            runtime_debug=False,
-            is_extracted=row["is_stdin"],
-        )
+        if self.backend == "ray":
+            result_list = unsafe_lcb_runTests_ray(
+                problem_to_check,
+                post_process_code(last_code),
+                self.TIMEOUT,
+                runtime_debug=False,
+                is_extracted=row["is_stdin"],
+            )
+        else:
+            result_list = unsafe_lcb_runTests_mp(
+                problem_to_check,
+                post_process_code(last_code),
+                self.TIMEOUT,
+                runtime_debug=False,
+                is_extracted=row["is_stdin"],
+            )
         details = [r[0] for r in result_list]
         all_passed = all(details)
 
@@ -89,6 +117,20 @@ class LiveCodeBenchScorer(Scorer):
 
 
 class LiveCodeBenchBatchScorer(BatchScorer):
+    """Batch scorer for LiveCodeBench
+
+    For the LiveCodeBench dataset format, see https://huggingface.co/datasets/livecodebench/code_generation_lite
+
+    Args:
+        question_content_column: The column name for the question (str).
+        private_test_cases_column: The column name for the private test cases (str).
+        public_test_cases_column: The column name for the public test cases (str).
+        starter_code_column: The column name for the starter code (str).
+        difficulty_column: The column name for the difficulty level (str).
+        question_id_column: The column name for the question id (str).
+        response_column: The column name for the response (str).
+    """
+
     TIMEOUT = 6
     SCORE_COLUMN = "livecodebench_score"
 
