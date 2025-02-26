@@ -10,14 +10,25 @@ For running OpenAI model, export the OpenAI key.
 export OPENAI_API_KEY={openai_api_key}
 ```
 
+## Usage
+
+We provide three commands in the CLI: 
+
+- `skythought evaluate` : Evaluate a model on a given task.
+- `skythought generate`: Generate model outputs for a pre-configured task.
+- `skythought score`: Score saved generations for a given task.
+
+For a walkthrough on the basics, please refer to the [example](../../examples/evaluate.ipynb). 
+
 ## Generation and Evaluation
 
 ### Benchmark Evaluation
 
-Given below are two examples for evaluation. For a walkthrough on the basics, please refer to the [example](../../examples/evaluate.ipynb). 
+Given below are two examples for evaluation.
 
 ```shell
 skythought evaluate --model NovaSky-AI/Sky-T1-32B-Preview --task aime  --backend vllm --backend-args tensor_parallel_size=8  --sampling-params temperature=0.6,top_p=0.95 --n 8 --result-dir ./
+
 skythought evaluate --model NovaSky-AI/Sky-T1-32B-Preview --task gpqa_diamond --backend vllm --backend-args tensor_parallel_size=8 --sampling-params temperature=0.6,top_p=0.95 --n 8
 ```
 
@@ -85,7 +96,13 @@ Currently we support distill and reject sampling for NUMINA, APPS, and TACO data
 #### Example Usage
 
 ```shell
-skythought generate --model Qwen/QwQ-32B-Preview --task apps --backend ray --backend-args tensor_parallel_size=8 --sampling-params max_tokens=16384 --result-dir $SKYT_HOME/data
+skythought generate --model Qwen/QwQ-32B-Preview --task numina_amc_aime --backend ray --backend-args tensor_parallel_size=8 --sampling-params max_tokens=16384 --result-dir $SKYT_HOME/data
+```
+
+Once the generations are saved, you can then apply any postprocessing on the results (saved in a `results.json` file in separate run folder) and then run:
+
+```shell
+skythought score --task numina_amc_aime --run-dir <path>
 ```
 
 ### Reproducibility Issues
@@ -97,4 +114,4 @@ We've noticed that it can be hard to reproduce results in reasoning benchmarks. 
 - vLLM settings:  With vLLM, we’ve also noticed that at half-precision, different batch sizes can affect downstream evaluation results by a few percentage points. Further, different tensor parallelism settings can also change results in half-precision.
 - vLLM version: Different versions of vLLM will use different CUDA-Toolkit or Flash attention versions. Even for the same settings, these differences in the underlying kernels used can change results. 
 
- We recommend to run all evaluation benchmarks at full precision, i.e float32 to avoid this. By default, we run evaluation in `float32`, which can be customized with the `--backend-args` flag for local inference. In full-precision, evaluation results should be robust to changes in batch size, tensor parallel size, version differences, etc.
+ We recommend to run evaluation benchmarks at full precision, i.e float32 to avoid this. In full-precision, evaluation results should be robust to changes in batch size, tensor parallel size, version differences, etc.
