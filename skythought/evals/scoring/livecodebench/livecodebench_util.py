@@ -309,17 +309,27 @@ def unsafe_lcb_runTests(problem, completion, timeout, runtime_debug, is_extracte
     return result
 
 
+@ray.remote
+def _ray_wrapper(
+    test_cases, completion, timeout, runtime_debug, is_extracted, idx=None
+):
+    limit = (timeout + 1) * len(test_cases) + 5
+    try:
+        with time_limit(limit):
+            return idx, run_tests_for_one_example(
+                test_cases, completion, runtime_debug, is_extracted
+            )
+    except TimeoutException:
+        return idx, []
+
+
 def unsafe_lcb_runTests_ray(problem, completion, timeout, runtime_debug, is_extracted):
     test_cases = problem["test"]
 
-    @ray.remote
-    def _ray_wrapper(test_cases, completion, runtime_debug, is_extracted):
-        return run_tests_for_one_example(
-            test_cases, completion, runtime_debug, is_extracted
-        )
-
-    result = ray.get(
-        _ray_wrapper.remote(test_cases, completion, runtime_debug, is_extracted),
+    _, result = ray.get(
+        _ray_wrapper.remote(
+            test_cases, completion, timeout, runtime_debug, is_extracted
+        ),
         timeout=timeout + 1,
     )
     # if len(result) < len(test_cases): ## This is supposed to be the case where not all test passed in the given timeout

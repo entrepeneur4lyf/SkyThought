@@ -14,31 +14,42 @@ except ImportError:
 class MathEqualScorer(Scorer):
     """Scorer for math based on the `math_equal` function from Qwen Math"""
 
-    def __init__(self, response_key: str, answer_key: str):
-        self.response_key = response_key
-        self.answer_key = answer_key
+    SCORE_COLUMN = "math_equal_score"
 
-    def __call__(self, row: dict) -> bool:
+    def __init__(self, response_column: str, answer_column: str):
+        """Initializes the MathEqualScorer.
+
+        Args:
+            response_column: The column name for the model generated response.
+            answer_column: The column name for the ground truth answer.
+        """
+        self.response_column = response_column
+        self.answer_column = answer_column
+
+    def score(self, row: dict) -> bool:
         try:
-            pred = extract_answer(row[self.response_key])
-            ref = extract_answer(row[self.answer_key])
+            pred = extract_answer(row[self.response_column])
+            ref = extract_answer(row[self.answer_column])
         except Exception:
             return False
         return math_equal(pred, ref)
 
+    @property
+    def expected_keys(self) -> List[str]:
+        return [self.response_column, self.answer_column]
+
 
 class MathVerifyScorer(Scorer):
-    """
-    Scorer for math based on the `math_verify` function from HuggingFace
-    """
+    """Scorer for math based on the `math_verify` function from HuggingFace"""
 
-    def __init__(self, response_key: str, answer_key: str):
+    SCORE_COLUMN = "math_verify_score"
 
-        self.response_key = response_key
-        self.answer_key = answer_key
+    def __init__(self, response_column: str, answer_column: str):
+        self.response_column = response_column
+        self.answer_column = answer_column
         if mv_parse is None or mv_verify is None:
             raise ImportError(
-                "math_verify is not installed. Please install it with `pip install math_verify`."
+                "`math_verify` is not installed. Please install it with `pip install math_verify`."
             )
 
     def score(self, row: dict) -> bool:
@@ -51,4 +62,4 @@ class MathVerifyScorer(Scorer):
 
     @property
     def expected_keys(self) -> List[str]:
-        return [self.response_key, self.answer_key]
+        return [self.response_column, self.answer_column]

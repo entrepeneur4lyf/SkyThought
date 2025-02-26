@@ -1,5 +1,5 @@
 import re
-from typing import List
+from typing import Any, Dict, List
 
 from skythought.evals.util.math_parsing_util import extract_answer, math_equal
 
@@ -9,21 +9,30 @@ from .base import Scorer
 class GSM8KScorer(Scorer):
     """Scorer for GSM8K based on the `math_equal` function from Qwen Math"""
 
+    SCORE_COLUMN = "gsm8k_score"
     INVALID_ANS = "[invalid]"
     GT_RE = re.compile(r"#### (\-?[0-9\.\,]+)")
     ANS_RE = re.compile(r"((-?[$0-9.,]{2,})|(-?[0-9]+))")
 
-    def __init__(self, response_key: str, answer_key: str):
-        self.response_key = response_key
-        self.answer_key = answer_key
+    def __init__(self, response_column: str, answer_column: str):
+        """Initializes the GSM8KScorer.
 
-    def score(self, row: dict) -> bool:
+        Args:
+            response_column: The column name for the model generated response.
+            answer_column: The column name for the ground truth answer.
+        """
+        self.response_column = response_column
+        self.answer_column = answer_column
+
+    def score(self, row: dict) -> Dict[str, Any]:
         try:
             pred = self.extract_pred_from_response(row[self.response_key])
             ref = self.extract_gt_answer(row[self.answer_key])
         except Exception:
             return False
-        return math_equal(pred, ref)
+        return {
+            self.SCORE_COLUMN: math_equal(pred, ref),
+        }
 
     def extract_gt_answer(self, completion):
         match = self.GT_RE.search(completion)
@@ -58,4 +67,4 @@ class GSM8KScorer(Scorer):
 
     @property
     def expected_keys(self) -> List[str]:
-        return [self.response_key, self.answer_key]
+        return [self.response_column, self.answer_column]

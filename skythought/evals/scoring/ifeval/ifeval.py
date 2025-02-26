@@ -1,4 +1,4 @@
-from typing import List
+from typing import Any, Dict, List
 
 from skythought.evals.scoring.ifeval.instructions_main import (
     InputExample,
@@ -33,9 +33,37 @@ class IfEvalScorer(Scorer):
     Scorer for the IF-Eval dataset. Requires the dataset to be in the format as https://huggingface.co/datasets/google/IFEval
     """
 
-    def __call__(self, row: dict) -> bool:
-        return process_results(row, row["response"])
+    SCORE_COLUMN = "ifeval_score"
+
+    def __init__(
+        self,
+        instruction_ids_column: str = "instruction_id_list",
+        prompt_column: str = "prompt",
+        keyword_args_column: str = "kwargs",
+        key_column: str = "key",
+        response_column: str = "response",
+    ):
+        """Initializes the IfEvalScorer.
+
+        Args:
+            instruction_ids_column: The column name for the list of instruction ids.
+            prompt_column: The column name for the prompt.
+            keyword_args_column: The column name for the keyword arguments to the instruction builder.
+            key_column: The column name for the unique identifier.
+            response_column: The column name for the response.
+        """
+        self.instruction_ids_column = instruction_ids_column
+        self.response_column = response_column
+
+    def score(self, row: dict) -> Dict[str, Any]:
+        return {self.SCORE_COLUMN: process_results(row, row[self.response_column])}
 
     @property
     def expected_keys(self) -> List[str]:
-        return ["instruction_id_list", "prompt", "kwargs", "key"]
+        return [
+            self.instruction_ids_column,
+            self.prompt_column,
+            self.keyword_args_column,
+            self.key_column,
+            self.response_column,
+        ]

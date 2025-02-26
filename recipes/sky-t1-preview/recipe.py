@@ -2,6 +2,8 @@
 This is the recipe for data curation for the Sky T1 Preview model . 
 """
 
+import os
+
 import datasets
 import ray
 from ray.data.llm import (
@@ -96,7 +98,7 @@ for i, ds in enumerate(datasets):
 # define a configuration for the reformatter
 config = HttpRequestProcessorConfig(
     url="https://api.openai.com/v1/chat/completions",
-    headers={"Authorization": "Bearer sk-..."},
+    headers={"Authorization": f"Bearer {os.environ['OPENAI_API_KEY']}"},
     # number of processors to run in parallel
     # Each handles a batch of requests
     concurrency=1,
