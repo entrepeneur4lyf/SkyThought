@@ -74,7 +74,8 @@ for i, ds in enumerate(datasets):
 
     # our API
     config = vLLMEngineProcessorConfig(
-        model="Qwen/QwQ-32B-Preview",
+        # model="Qwen/QwQ-32B-Preview",
+        model="Qwen/Qwen2-0.5B-Instruct",
         engine_kwargs=dict(
             enable_prefix_caching=True,
             enable_chunked_prefill=True,
