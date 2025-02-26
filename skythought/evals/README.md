@@ -115,3 +115,38 @@ We've noticed that it can be hard to reproduce results in reasoning benchmarks. 
 - vLLM version: Different versions of vLLM will use different CUDA-Toolkit or Flash attention versions. Even for the same settings, these differences in the underlying kernels used can change results. 
 
  We recommend to run evaluation benchmarks at full precision, i.e float32 to avoid this. In full-precision, evaluation results should be robust to changes in batch size, tensor parallel size, version differences, etc.
+
+
+## Key Concepts Guide
+
+### Tasks
+
+A Task consists of task-specific configuration and implements 
+- Dataset loading and preprocessing 
+- Creating of input conversation to the model
+- Scoring of model responses
+
+The configuration (`TaskConfig`) contains dataset loading related details such as Hugging Face dataset ID, the particular subset for this benchmark (e.g., ”Challenge” subset for ARC), and a task template, which contains task-specific instructions to be used (Eg: `Return your answer in \boxed{}`). Each configuration is stored in a YAML. For example, you can see the YAML in this [aime24.yaml file](./tasks/aime/aime24.yaml)
+
+Internally, a Task implementation is termed a "TaskHandler", you can see one such implementation [here](./tasks/aime/aime_handler.py). 
+
+
+To add a new task `mytask`: 
+- First, see if the task can be simply specified as a configuration (One example is [`aime25`](./tasks/aime/aime25.yaml)). If so, you can add a YAML file in the appropriate folder and re-use an existing handler. (All available handlers are specified [here](./tasks/__init__.py)). 
+- If not, you should create a new `TaskHandler` subclass for this task along with a task configuration YAML (`mytask.yaml`). 
+
+### Models
+
+A Model consists of the model ID and templating configuration. This configuration optionally contains the system prompt and an assistant prefill message. Different reasoning models use their own system prompt, and some perform best when the response is prefilled with special tokens. 
+
+We store a list of system prompt templates as well as pre-configured models [here](./models/model_configs.yaml). 
+
+### Backend
+
+The Backend is concerned with how the LLM instance is created and queried. For flexibility, we support 
+- Local inference with vLLM (basic single node) or Ray+vLLM (more scalable single and multi-node inference)
+- Remote inference behind an OpenAI-compatible endpoint. 
+
+The Backend also consists of configuration at instantiation (ex; the data type for the model), along with sampling parameters during generation (temperature, max tokens, etc).
+
+
