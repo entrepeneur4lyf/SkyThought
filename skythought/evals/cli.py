@@ -29,7 +29,7 @@ logger = logging.getLogger(__name__)
 
 app = typer.Typer(pretty_exceptions_enable=False)
 
-BACKEND_DEFAULT = "temperature=0,top_p=1,max_tokens=32768"
+SAMPLING_PARAMS_DEFAULT = "temperature=0,top_p=1,max_tokens=32768"
 
 
 def get_run_config(
@@ -111,13 +111,11 @@ def parse_common_args(
             f"Task {task} not found. Should be one of {TASK_NAMES_TO_YAML.keys()}"
         )
     task_args_as_dict = parse_multi_args(task_args)
-    sampling_params_as_dict = parse_multi_args(sampling_params)
-    user_provided_backend_args_as_dict = parse_multi_args(backend_args)
+    user_provided_sampling_params_as_dict = parse_multi_args(sampling_params)
+    sampling_params_as_dict = parse_multi_args(SAMPLING_PARAMS_DEFAULT)
+    sampling_params_as_dict.update(user_provided_sampling_params_as_dict)
 
-    backend_args_default = parse_multi_args(BACKEND_DEFAULT)
-    backend_args_as_dict = dict(
-        **backend_args_default, **user_provided_backend_args_as_dict
-    )
+    backend_args_as_dict = parse_multi_args(backend_args)
 
     if n is not None:
         sampling_params_as_dict["n"] = n
@@ -206,7 +204,7 @@ def evaluate(
             help="Sampling parameters to use for inference.",
             case_sensitive=False,
         ),
-    ] = BACKEND_DEFAULT,
+    ] = SAMPLING_PARAMS_DEFAULT,
     result_dir: Annotated[
         str,
         typer.Option(
