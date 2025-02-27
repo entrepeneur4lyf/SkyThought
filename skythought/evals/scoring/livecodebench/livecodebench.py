@@ -152,11 +152,11 @@ class LiveCodeBenchBatchScorer(BatchScorer):
         self.question_id_column = question_id_column
         self.response_column = response_column
 
-    async def score(self, batch: List[Dict[str, Any]]) -> AsyncIterator[Dict[str, Any]]:
+    async def score(self, rows: List[Dict[str, Any]]) -> AsyncIterator[Dict[str, Any]]:
 
         inputs = []
         ids = []
-        for row in batch:
+        for row in rows:
             row = self.map_to_example(row)
             code_filter_result = has_code(row[self.response_column])
             last_code = None

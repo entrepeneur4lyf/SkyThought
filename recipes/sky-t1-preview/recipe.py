@@ -31,7 +31,7 @@ parser.add_argument("--as-test", action="store_true")
 args = parser.parse_args()
 
 SYSTEM_PROMPT = "You are a helpful and harmless assistant. You are Qwen developed by Alibaba. You should think step-by-step."  # noqa: E501
-
+MAX_TOKENS = 16384
 # 1. Load datasets
 apps_ds = datasets.load_dataset(
     "codeparrot/apps",
@@ -51,16 +51,19 @@ numina_ds = ray.data.from_huggingface(numina_ds)
 
 # get subsets from numina based on the source column
 numina_ds_amc_aime = numina_ds.filter(lambda x: x["source"] == "amc_aime")
-numina_ds_olympiads = numina_ds.filter(lambda x: x["source"] == "olympiads")
+numina_ds_olympiads = numina_ds.filter(lambda x: x["source"] == "olympiads").limit(
+    20000
+)
 numina_ds_math = numina_ds.filter(lambda x: x["source"] == "math")
 
 
 if args.as_test:
-    apps_ds = apps_ds.limit(5)
-    taco_ds_medium = taco_ds_medium.limit(5)
-    numina_ds_amc_aime = numina_ds_amc_aime.limit(5)
-    numina_ds_olympiads = numina_ds_olympiads.limit(5)
-    numina_ds_math = numina_ds_math.limit(5)
+    num_samples = 100
+    apps_ds = apps_ds.limit(num_samples)
+    taco_ds_medium = taco_ds_medium.limit(num_samples)
+    numina_ds_amc_aime = numina_ds_amc_aime.limit(num_samples)
+    numina_ds_olympiads = numina_ds_olympiads.limit(num_samples)
+    numina_ds_math = numina_ds_math.limit(num_samples)
 
 # 2. Get model responses for each of the datasets
 datasets = [
@@ -90,13 +93,13 @@ scorers = [
     numina_scorer,
     numina_scorer,
 ]
-
+dataset_names = ["apps", "taco", "numina_amc_aime", "numina_math", "numina_olympiads"]
 for i, ds in enumerate(datasets):
     datasets[i] = ds.map(preprocess_fns[i])
 
     config = vLLMEngineProcessorConfig(
-        # model="Qwen/QwQ-32B-Preview",
-        model="Qwen/Qwen2-0.5B-Instruct",
+        model="Qwen/QwQ-32B-Preview",
+        # model="Qwen/Qwen2-0.5B-Instruct",
         engine_kwargs=dict(
             enable_prefix_caching=True,
             enable_chunked_prefill=True,
@@ -151,12 +154,12 @@ for i, ds in enumerate(datasets):
                         "role": "user",
                         "content": CONVERT_PROMPT.format(
                             example=CONVERT_PROMPT_EXAMPLE,
-                            content=f"{row['question']}\n{row['assistant_response']}",
+                            content=f"{row['user_input']}\n{row['assistant_response']}",
                         ),
                     },
                 ],
                 temperature=0.7,
-                max_tokens=2048,
+                max_tokens=MAX_TOKENS,
             ),
         ),
         postprocess=lambda row: dict(
@@ -167,15 +170,14 @@ for i, ds in enumerate(datasets):
     datasets[i] = reformatter(datasets[i])
 
     # 4. Rejection Sampling based on scoring
-    # apps, taco, numina-amc-aime, numina-olympiads, numina-math
     datasets[i] = datasets[i].map(scorers[i])
-    # datasets[i] = datasets[i].filter(lambda x: x[scorers[i].SCORE_COLUMN])
+    score_column = scorers[i].SCORE_COLUMN
+    datasets[i] = datasets[i].filter(lambda x, sc=score_column: x[sc])
 
     # 5. Convert to ShareGPT format
     datasets[i] = datasets[i].map(convert_to_sharegpt_format)
 
     # 6. Save datasets
-    dir_name = f"sky-t1-preview-{i}_parquet"
+    dir_name = f"data/sky-t1-preview-{dataset_names[i]}"
     datasets[i] = datasets[i].materialize()
-    # breakpoint()
-    datasets[i].write_parquet(os.path.abspath(dir_name))
+    datasets[i].write_json(os.path.abspath(dir_name))

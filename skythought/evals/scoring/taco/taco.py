@@ -28,7 +28,7 @@ class TACOScorer(Scorer):
 
     def score(self, row: Dict[str, Any]):
         # Initialize the response structure
-        response = row[self.input_column]
+        response = row[self.response_column]
         input_outputs = row[self.input_output_column]
 
         code_filter_result = has_code(response)
@@ -82,4 +82,4 @@ def _taco_run_tests_ray(input_outputs, generation):
     # run the test in a separate process for safety
     obj_ref = _temp_run_ray.remote(input_outputs, generation, False)
     result = ray.get(obj_ref)
-    return bool(result and all(result[0]))
+    return bool(result and all(result))

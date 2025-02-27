@@ -1,5 +1,5 @@
 from abc import ABC, abstractmethod
-from typing import Any, AsyncIterator, Dict
+from typing import Any, AsyncIterator, Dict, List
 
 
 class Scorer(ABC):
@@ -33,7 +33,7 @@ class BatchScorer(ABC):
     INTERNAL_IDX_KEY = "__internal_idx__"
 
     @abstractmethod
-    async def score(self, batch: Dict[str, Any]) -> AsyncIterator[Dict[str, Any]]:
+    async def score(self, rows: List[Dict[str, Any]]) -> AsyncIterator[Dict[str, Any]]:
         """Scores a batch of data
 
         Args:
@@ -60,7 +60,15 @@ class BatchScorer(ABC):
         num_rows = len(value)
         if hasattr(value, "tolist"):
             batch = {k: v.tolist() for k, v in batch.items()}
+        else:
+            batch = {k: list(v) for k, v in batch.items()}
         batch[self.INTERNAL_IDX_KEY] = list(range(num_rows))
-        async for result in self.score(batch):
-            row = result[self.INTERNAL_IDX_KEY]
+        rows = [{k: batch[k][i] for k in batch.keys()} for i in range(num_rows)]
+        async for result in self.score(rows):
+            if self.INTERNAL_IDX_KEY not in result:
+                raise ValueError(
+                    f"`score` function must yield dictionaries with the key {self.INTERNAL_IDX_KEY}"
+                )
+            idx = result[self.INTERNAL_IDX_KEY]
+            row = rows[idx]
             yield {**row, **result}

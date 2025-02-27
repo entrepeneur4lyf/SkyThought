@@ -1,4 +1,4 @@
-from typing import List
+from typing import Any, Dict, List
 
 from ..util.math_parsing_util import extract_answer, math_equal
 from .base import Scorer
@@ -25,13 +25,13 @@ class MathEqualScorer(Scorer):
         self.response_column = response_column
         self.answer_column = answer_column
 
-    def score(self, row: dict) -> bool:
+    def score(self, row: dict) -> Dict[str, Any]:
         try:
             pred = extract_answer(row[self.response_column])
             ref = extract_answer(row[self.answer_column])
         except Exception:
             return False
-        return math_equal(pred, ref)
+        return {self.SCORE_COLUMN: math_equal(pred, ref)}
 
     @property
     def expected_keys(self) -> List[str]:
@@ -56,13 +56,13 @@ class MathVerifyScorer(Scorer):
                 "`math_verify` is not installed. Please install it with `pip install math_verify`."
             )
 
-    def score(self, row: dict) -> bool:
+    def score(self, row: dict) -> Dict[str, Any]:
         try:
             pred = mv_parse(row[self.response_key])
             ref = mv_parse(row[self.answer_key])
         except Exception:
             return False
-        return mv_verify(pred, ref)
+        return {self.SCORE_COLUMN: mv_verify(pred, ref)}
 
     @property
     def expected_keys(self) -> List[str]:
