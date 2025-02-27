@@ -1,4 +1,4 @@
-convert_prompt_example = (  # noqa: E501
+CONVERT_PROMPT_EXAMPLE = (  # noqa: E501
     "<|begin_of_thought|>\n\n"
     "Okay, so I've got this problem here. Mr. Wang leaves home at 6 AM, riding his bike at 12 km/h, "
     "and he stops to rest for 6 minutes after every 30 minutes of riding. Then, when he arrives at a park "
@@ -65,5 +65,5 @@ CONVERT_PROMPT = (
     "{example}\n"
     "Important: You should almost copy all the contents word-by-word of the original solution. Just convert them into two sections. "
     "Make sure you include: <|begin_of_slow_thought|>, <|end_of_slow_thought|>,  <|begin_of_solution|>,<|end_of_solution|>  These four headers explicitly. "
-    "Content to be converted: {{content}}".format(example=convert_prompt_example)
+    "Content to be converted: {content}"
 )

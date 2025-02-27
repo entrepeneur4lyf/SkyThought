@@ -16,13 +16,13 @@
 """Library of instructions."""
 import collections
 import json
+import logging
 import random
 import re
 import string
 from typing import Dict, Optional, Sequence, Union
 
 import langdetect
-from absl import logging
 
 from . import instructions_util
 

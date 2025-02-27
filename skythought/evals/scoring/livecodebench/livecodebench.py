@@ -60,7 +60,7 @@ class LiveCodeBenchScorer(Scorer):
         code_filter_result = has_code(row[self.response_column])
         last_code = None
         if len(code_filter_result) == 0:
-            return False
+            return {self.SCORE_COLUMN: False}
         else:
             last_code = code_filter_result[-1]
             problem_to_check = copy.deepcopy(row)
@@ -71,7 +71,7 @@ class LiveCodeBenchScorer(Scorer):
                 post_process_code(last_code),
                 self.TIMEOUT,
                 runtime_debug=False,
-                is_extracted=row["is_stdin"],
+                is_extracted=not row["is_stdin"],
             )
         else:
             result_list = unsafe_lcb_runTests_mp(
@@ -79,7 +79,7 @@ class LiveCodeBenchScorer(Scorer):
                 post_process_code(last_code),
                 self.TIMEOUT,
                 runtime_debug=False,
-                is_extracted=row["is_stdin"],
+                is_extracted=not row["is_stdin"],
             )
         details = [r[0] for r in result_list]
         all_passed = all(details)
@@ -88,7 +88,7 @@ class LiveCodeBenchScorer(Scorer):
         if result_list and all_passed:
             result = "passed"
 
-        return {self.SCORE_COLUMN: result == "passed"}
+        return {self.SCORE_COLUMN: result == "passed", "all_results": result_list}
 
     @property
     def expected_keys(self) -> List[str]:

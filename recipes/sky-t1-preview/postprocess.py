@@ -1,13 +1,4 @@
-import copy
-import json
 from typing import Any, Dict
-
-import numpy as np
-import ray
-
-from skythought.evals.scoring.base import Scorer
-from skythought.evals.tasks.apps.apps_util import run_test as apps_run_test
-from skythought.evals.util.common import has_code
 
 STILL2_SYSTEM_PROMPT = "Your role as an assistant involves thoroughly exploring questions through a systematic long \
 thinking process before providing the final precise and accurate solutions. This requires \
@@ -28,41 +19,6 @@ conclusion, formatted as follows: \
 {final formatted, precise, and clear solution} \
 <|end_of_solution|> \
 Now, try to solve the following question through the above guidelines:"
-
-
-class APPSScorer(Scorer):
-    def score(self, row: Dict[str, Any]):
-        TIMEOUT = 10
-        code_filter_result = has_code(row["response"])
-        if len(code_filter_result) == 0:
-            return False
-        else:
-            last_code = code_filter_result[-1]
-            problem_to_check = copy.deepcopy(row)
-            problem_to_check["input_output"] = json.loads(row["input_output"])
-            try:
-                problem_to_check["solutions"] = json.loads(row["solutions"])
-            except Exception:
-                problem_to_check["solutions"] = ""
-
-        @ray.remote
-        def _temp_run(problem, generation, debug):
-            try:
-                result = apps_run_test(problem=problem, test=generation, debug=debug)
-                return result
-            except Exception:
-                pass
-
-        result = ray.get(
-            _temp_run.remote(problem_to_check, last_code, False), timeout=TIMEOUT + 1
-        )
-
-        return bool(result and np.all(result[0]))
-
-
-class TACOScorer(Scorer):
-    def score(self, row: Dict[str, Any]):
-        return True
 
 
 def convert_to_sharegpt_format(row: Dict[str, Any]):

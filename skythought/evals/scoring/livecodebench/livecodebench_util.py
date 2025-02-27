@@ -330,7 +330,6 @@ def unsafe_lcb_runTests_ray(problem, completion, timeout, runtime_debug, is_extr
         _ray_wrapper.remote(
             test_cases, completion, timeout, runtime_debug, is_extracted
         ),
-        timeout=timeout + 1,
     )
     # if len(result) < len(test_cases): ## This is supposed to be the case where not all test passed in the given timeout
     for _i in range(len(test_cases) - len(result)):
@@ -344,6 +343,8 @@ def run_tests_for_one_example(
     time_elapsed = float("inf")
     test_type = test_cases[0]["testtype"]
     reliability_guard()
+    if not result_list:
+        result_list = []
     for _i, test_case in enumerate(test_cases):
         output_error = ""
         output_value = ""
@@ -378,13 +379,9 @@ def run_tests_for_one_example(
         if output_error == "":
             output_error = f"For test input: {test_input}. Expected output is: {test_output}, your solution correctly passes this test with output {output_value}."  # noqa: E501
 
-        if result_list is not None:
-            result_list.append((passed, output_error, output_value, time_elapsed))
-        else:
-            return passed
+        result_list.append((passed, output_error, output_value, time_elapsed))
 
-        if not passed:
-            return
+    return result_list
 
 
 @contextlib.contextmanager
