@@ -21,15 +21,15 @@ conclusion, formatted as follows: \
 Now, try to solve the following question through the above guidelines:"
 
 
-def convert_to_sharegpt_format(row: Dict[str, Any]):
-    prompt = row["user_input"]
+def convert_to_sharegpt_format(row: Dict[str, Any], prompt_column, response_column):
+    prompt = row[prompt_column]
     # accept
     # Create the conversation format
     conversations = [
         {"from": "user", "value": prompt},
         {
             "from": "assistant",
-            "value": row["formatted_response"],
+            "value": row[response_column],
         },
     ]
 
@@ -37,6 +37,8 @@ def convert_to_sharegpt_format(row: Dict[str, Any]):
     cur_data = {
         "system": STILL2_SYSTEM_PROMPT,
         "conversations": conversations,
+        # TODO: remove this
+        **row,
     }
 
     return cur_data
