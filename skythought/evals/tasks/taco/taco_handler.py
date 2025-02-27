@@ -51,12 +51,6 @@ class TACOTaskHandler(TaskHandler):
     def check_correctness(self, problem, generation):
         TIME_OUT = 300
 
-        def _temp_run(problem, generation, debug, result):
-            try:
-                result.append(taco_run_test(problem, test=generation, debug=debug))
-            except Exception as e:
-                print(f"Error in _temp_run: {e}")
-
         manager = Manager()
         result = manager.list()
         p = multiprocessing.Process(
@@ -106,3 +100,10 @@ class TACOTaskHandler(TaskHandler):
             )
 
         return dataset.iloc[start:end] if end > 0 else dataset.iloc[start:]
+
+
+def _temp_run(problem, generation, debug, result):
+    try:
+        result.append(taco_run_test(problem, test=generation, debug=debug))
+    except Exception as e:
+        print(f"Error in _temp_run: {e}")

@@ -167,6 +167,8 @@ def inference(
         # TODO: revisit the underlying issue and remove the deepcopy if possible
         responses = copy.deepcopy(responses)
         responses = sorted(responses, key=lambda x: x.index)
+        # Cleanup ray session
+        ray.shutdown()
     elif backend == Backend.OPENAI:
         llm = OpenAI(**backend_params.to_dict())
         assert isinstance(sampling_params.params, OpenAISamplingParams)
