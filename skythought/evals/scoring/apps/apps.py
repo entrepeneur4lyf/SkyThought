@@ -1,6 +1,6 @@
 import copy
 import json
-from typing import Any, Dict
+from typing import Any, Dict, Literal
 
 import numpy as np
 import ray
@@ -19,11 +19,13 @@ class APPSScorer(Scorer):
         response_column="response",
         answer_column="solutions",
         input_column="input_output",
+        backend: Literal["mp", "ray"] = "ray",
     ) -> None:
         super().__init__()
         self.response_column = response_column
         self.answer_column = answer_column
         self.input_column = input_column
+        self.backend = backend
 
     def score(self, row: Dict[str, Any]):
         TIMEOUT = 10

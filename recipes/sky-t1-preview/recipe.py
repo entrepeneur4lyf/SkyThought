@@ -18,7 +18,12 @@ from skythought.evals.scoring.math import MathEqualScorer
 from skythought.evals.scoring.taco import TACOScorer
 
 from .postprocess import convert_to_sharegpt_format
-from .preprocess import APPSPreprocessor, NUMINAPreprocessor, TACOPreprocessor
+from .preprocess import (
+    APPSPreprocessor,
+    NUMINAPreprocessor,
+    TACOPreprocessor,
+    taco_coerce_types,
+)
 from .prompts import CONVERT_PROMPT, CONVERT_PROMPT_EXAMPLE
 
 parser = argparse.ArgumentParser()
@@ -38,6 +43,9 @@ numina_ds = datasets.load_dataset("AI-MO/NuminaMath-CoT", split="train")
 # convert all to ray dataset
 apps_ds = ray.data.from_huggingface(apps_ds)
 taco_ds_medium = ray.data.from_huggingface(taco_ds_medium)
+taco_ds_medium = taco_ds_medium.map(
+    taco_coerce_types, fn_args=(taco_ds_medium.schema(),)
+)
 numina_ds = ray.data.from_huggingface(numina_ds)
 
 
@@ -77,7 +85,7 @@ numina_scorer = MathEqualScorer(
 )
 scorers = [
     APPSScorer(response_column="formatted_response"),
-    TACOScorer(response_column="formatted_response"),
+    TACOScorer(response_column="formatted_response", backend="ray"),
     numina_scorer,
     numina_scorer,
     numina_scorer,
@@ -168,4 +176,6 @@ for i, ds in enumerate(datasets):
 
     # 6. Save datasets
     dir_name = f"sky-t1-preview-{i}_parquet"
+    datasets[i] = datasets[i].materialize()
+    # breakpoint()
     datasets[i].write_parquet(os.path.abspath(dir_name))

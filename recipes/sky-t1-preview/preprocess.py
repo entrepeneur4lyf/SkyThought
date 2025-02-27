@@ -1,5 +1,8 @@
 import json
 
+import pyarrow as pa
+from ray.data import Schema
+
 
 class APPSPreprocessor:
     WITH_FN_NAME_TEMPLATE = "Generate an executable Python function generated from the given prompt. The function should take stdin as input and print the output. Simply call the function after the definition. {prompt}"  # noqa: E501
@@ -68,3 +71,17 @@ class NUMINAPreprocessor:
         prompt = row["problem"]
         _input = self.TEMPLATE.format(prompt=prompt)
         return {**row, "user_input": _input}
+
+
+def taco_coerce_types(row, schema: Schema):
+    for key, schema_type in zip(schema.names, schema.types):
+        value = pa.array([row[key]])
+        if value.type != schema_type:
+            if schema_type == pa.string():
+                try:
+                    row[key] = str(row[key])
+                except Exception:
+                    row[key] = ""
+            elif schema_type == pa.null():
+                row[key] = None
+    return row
