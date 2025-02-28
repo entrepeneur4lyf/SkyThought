@@ -72,7 +72,12 @@ def _taco_run_tests_mp(input_outputs, generation):
     return bool(result and all(result[0])), result
 
 
-@ray.remote
+# NOTE (sumanthrh): We make sure that scoring for code generation is run on a separate process for isolation
+# We need to run scoring for each data sample in a separate process. Since ray doesn't play well with
+# multiprocessing, we launch scoring as a standalone ray task. Further, to make sure that resource requests
+# don't blow up for batched processing- for example, in a ray data pipeline, we reduce `num_cpus` to 0.01 from the default
+# value of 1. That way, scoring for different samples can timeshare on the same set of cpus.
+@ray.remote(num_cpus=0.01)
 def _temp_run_ray(input_outputs, generation, debug):
     result = []
     try:

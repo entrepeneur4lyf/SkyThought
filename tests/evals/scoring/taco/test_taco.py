@@ -1,3 +1,5 @@
+import pytest
+
 from skythought.evals.scoring.taco import TACOScorer
 
 # an example from the TACO dataset with an incorrect assistant reponse.
@@ -9,9 +11,12 @@ TACO_EXAMPLE = {
 }
 
 
-def test_taco_scorer():
+@pytest.mark.parametrize("backend", ["mp", "ray"])
+def test_taco_scorer(backend):
     scorer = TACOScorer(
-        response_column="formatted_response", input_output_column="input_output_field"
+        response_column="formatted_response",
+        input_output_column="input_output_field",
+        backend=backend,
     )
     out = scorer(TACO_EXAMPLE)
     assert set(TACO_EXAMPLE.keys()).issubset(set(out.keys()))

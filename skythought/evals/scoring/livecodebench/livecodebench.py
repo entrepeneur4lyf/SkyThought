@@ -88,7 +88,7 @@ class LiveCodeBenchScorer(Scorer):
         if result_list and all_passed:
             result = "passed"
 
-        return {self.SCORE_COLUMN: result == "passed", "all_results": result_list}
+        return {self.SCORE_COLUMN: result == "passed"}
 
     @property
     def expected_keys(self) -> List[str]:
@@ -164,7 +164,6 @@ class LiveCodeBenchBatchScorer(BatchScorer):
                 yield {
                     self.INTERNAL_IDX_KEY: row[self.INTERNAL_IDX_KEY],
                     self.SCORE_COLUMN: False,
-                    "reason": "No code found",
                 }
             else:
                 last_code = code_filter_result[-1]
@@ -193,7 +192,6 @@ class LiveCodeBenchBatchScorer(BatchScorer):
             yield {
                 self.INTERNAL_IDX_KEY: idx,
                 self.SCORE_COLUMN: result == "passed",
-                "reason": [r[1] for r in result_list],
             }
 
     def map_to_example(self, row):
