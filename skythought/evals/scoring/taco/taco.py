@@ -37,14 +37,18 @@ class TACOScorer(Scorer):
         else:
             last_code = code_filter_result[-1]
             if self.backend == "mp":
-                curr_res = _taco_run_tests_mp(input_outputs, generation=last_code)
+                curr_res, results = _taco_run_tests_mp(
+                    input_outputs, generation=last_code
+                )
             else:
-                curr_res = _taco_run_tests_ray(input_outputs, generation=last_code)
+                curr_res, results = _taco_run_tests_ray(
+                    input_outputs, generation=last_code
+                )
 
             if curr_res:
                 return {self.SCORE_COLUMN: True}
             else:
-                return {self.SCORE_COLUMN: True}
+                return {self.SCORE_COLUMN: False}
 
 
 def _taco_run_tests_mp(input_outputs, generation):
@@ -65,7 +69,7 @@ def _taco_run_tests_mp(input_outputs, generation):
     p.join()
     if p.is_alive():
         p.kill()
-    return bool(result and all(result[0]))
+    return bool(result and all(result[0])), result
 
 
 @ray.remote
@@ -82,4 +86,4 @@ def _taco_run_tests_ray(input_outputs, generation):
     # run the test in a separate process for safety
     obj_ref = _temp_run_ray.remote(input_outputs, generation, False)
     result = ray.get(obj_ref)
-    return bool(result and all(result))
+    return bool(result and all(result)), result
