@@ -1,7 +1,8 @@
 from typing import Any, Dict, List
 
-from ..util.math_parsing_util import extract_answer, math_equal
-from .base import Scorer
+from skythought.evals.util.math_parsing_util import extract_answer, math_equal
+
+from ..base import Scorer
 
 try:
     from math_verify import parse as mv_parse
@@ -15,8 +16,8 @@ class MathEqualScorer(Scorer):
     """Scorer for math based on the `math_equal` function from Qwen Math
 
     Args:
-        response_column: The column name for the model generated response.
-        answer_column: The column name for the ground truth answer.
+        response_column: The column name for the model generated response. (str)
+        answer_column: The column name for the ground truth answer. (str)
     """
 
     SCORE_COLUMN = "math_equal_score"
@@ -42,8 +43,8 @@ class MathVerifyScorer(Scorer):
     """Scorer for math based on the `math_verify` function from HuggingFace
 
     Args:
-        response_column: The column name for the model generated response.
-        answer_column: The column name for the ground truth answer.
+        response_column: The column name for the model generated response. (str)
+        answer_column: The column name for the ground truth answer. (str)
     """
 
     SCORE_COLUMN = "math_verify_score"

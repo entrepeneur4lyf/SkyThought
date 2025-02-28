@@ -17,7 +17,7 @@ import tempfile
 import time
 import zlib
 from io import StringIO
-from typing import Optional
+from typing import List, Optional, Tuple
 
 import ray
 
@@ -288,7 +288,9 @@ def run_test_std(completion, test_input, test_output):
     return output_value == test_output, output_value
 
 
-def unsafe_lcb_runTests_mp(problem, completion, timeout, runtime_debug, is_extracted):
+def unsafe_lcb_runTests_mp(
+    problem, completion, timeout, runtime_debug, is_extracted
+) -> List[Tuple[bool, str, str, float]]:
     test_cases = problem["test"]
     manager = multiprocessing.Manager()
     result = manager.list()
@@ -303,6 +305,7 @@ def unsafe_lcb_runTests_mp(problem, completion, timeout, runtime_debug, is_extra
     if p.is_alive():
         p.kill()
 
+    result = list(result)
     # if len(result) < len(test_cases): ## This is supposed to be the case where not all test passed in the given timeout
     for _i in range(len(test_cases) - len(result)):
         result.append((False, "Time out!.", "Error: Time out!", float("inf")))
@@ -314,7 +317,7 @@ def unsafe_lcb_runTests_mp(problem, completion, timeout, runtime_debug, is_extra
 # multiprocessing, we launch scoring as a standalone ray task. Further, to make sure that resource requests
 # don't blow up for batched processing- for example, in a ray data pipeline, we reduce `num_cpus` to 0.01 from the default
 # value of 1. That way, scoring for different samples can timeshare on the same set of cpus.
-@ray.remote(num_cpus=0.01)
+@ray.remote(num_cpus=0.001)
 def _ray_wrapper(
     test_cases, completion, timeout, runtime_debug, is_extracted, idx=None
 ):
@@ -328,7 +331,9 @@ def _ray_wrapper(
         return idx, []
 
 
-def unsafe_lcb_runTests_ray(problem, completion, timeout, runtime_debug, is_extracted):
+def unsafe_lcb_runTests_ray(
+    problem, completion, timeout, runtime_debug, is_extracted
+) -> List[Tuple[bool, str, str, float]]:
     test_cases = problem["test"]
 
     _, result = ray.get(

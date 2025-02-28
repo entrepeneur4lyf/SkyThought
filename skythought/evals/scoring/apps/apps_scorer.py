@@ -2,7 +2,7 @@ import copy
 import json
 import multiprocessing
 from multiprocessing import Manager
-from typing import Any, Dict, Literal
+from typing import Any, Dict, List, Literal
 
 import numpy as np
 import ray
@@ -87,13 +87,14 @@ class APPSScorer(Scorer):
 # multiprocessing, we launch scoring as a standalone ray task. Further, to make sure that resource requests
 # don't blow up for batched processing- for example, in a ray data pipeline, we reduce `num_cpus` to 0.01 from the default
 # value of 1. That way, scoring for different samples can timeshare on the same set of cpus.
-@ray.remote(num_cpus=0.01)
-def _temp_run_ray(input_outputs, generation, debug):
+@ray.remote(num_cpus=0.001)
+def _temp_run_ray(input_outputs, generation, debug) -> List[bool]:
     try:
-        result = apps_run_test(input_outputs, test=generation, debug=debug)
+        result: List[bool] = apps_run_test(input_outputs, test=generation, debug=debug)
         return result
     except Exception:
         pass
+    return []
 
 
 def _run_test_ray(input_outputs, generation, timeout, debug):
@@ -104,12 +105,11 @@ def _run_test_ray(input_outputs, generation, timeout, debug):
         )
     except GetTimeoutError:
         result = []
-
-    return bool(result and np.all(result[0]))
+    return bool(result and np.all(result))
 
 
 def _run_test_mp(input_outputs, generation, timeout, debug):
-    def _temp_run(input_outputs, generation, debug, result):
+    def _temp_run(input_outputs, generation, debug, result) -> List[List[bool]]:
         try:
             result.append(
                 apps_run_test(input_outputs=input_outputs, test=generation, debug=debug)

@@ -1,3 +1,3 @@
-from .ifeval import IfEvalScorer
+from .ifeval_scorer import IfEvalScorer
 
 __all__ = ["IfEvalScorer"]

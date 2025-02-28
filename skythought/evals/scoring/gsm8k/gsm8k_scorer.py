@@ -3,7 +3,7 @@ from typing import Any, Dict, List
 
 from skythought.evals.util.math_parsing_util import extract_answer, math_equal
 
-from .base import Scorer
+from ..base import Scorer
 
 
 class GSM8KScorer(Scorer):

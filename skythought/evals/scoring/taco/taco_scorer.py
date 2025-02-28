@@ -37,13 +37,9 @@ class TACOScorer(Scorer):
         else:
             last_code = code_filter_result[-1]
             if self.backend == "mp":
-                curr_res, results = _taco_run_tests_mp(
-                    input_outputs, generation=last_code
-                )
+                curr_res, _ = _taco_run_tests_mp(input_outputs, generation=last_code)
             else:
-                curr_res, results = _taco_run_tests_ray(
-                    input_outputs, generation=last_code
-                )
+                curr_res, _ = _taco_run_tests_ray(input_outputs, generation=last_code)
 
             if curr_res:
                 return {self.SCORE_COLUMN: True}
@@ -69,15 +65,17 @@ def _taco_run_tests_mp(input_outputs, generation):
     p.join()
     if p.is_alive():
         p.kill()
-    return bool(result and all(result[0])), result
+    # get the first element in ListProxy - this is the result
+    result = result[0]
+    return bool(result and all(result)), result
 
 
 # NOTE (sumanthrh): We make sure that scoring for code generation is run on a separate process for isolation
 # We need to run scoring for each data sample in a separate process. Since ray doesn't play well with
 # multiprocessing, we launch scoring as a standalone ray task. Further, to make sure that resource requests
-# don't blow up for batched processing- for example, in a ray data pipeline, we reduce `num_cpus` to 0.01 from the default
+# don't blow up for batched processing- for example, in a ray data pipeline, we reduce `num_cpus` to 0.001 from the default
 # value of 1. That way, scoring for different samples can timeshare on the same set of cpus.
-@ray.remote(num_cpus=0.01)
+@ray.remote(num_cpus=0.001)
 def _temp_run_ray(input_outputs, generation, debug):
     result = []
     try:
