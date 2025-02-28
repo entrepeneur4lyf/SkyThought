@@ -4,6 +4,7 @@ This is the recipe for data curation for the Sky T1 Preview model .
 
 import argparse
 import os
+from pathlib import Path
 
 import datasets
 import ray
@@ -28,40 +29,66 @@ from .prompts import CONVERT_PROMPT, CONVERT_PROMPT_EXAMPLE
 
 parser = argparse.ArgumentParser()
 parser.add_argument("--as-test", action="store_true")
+parser.add_argument("--save-dir", type=str, required=True, help="Output directory")
 args = parser.parse_args()
+args.save_dir = Path(args.save_dir)
 
 SYSTEM_PROMPT = "You are a helpful and harmless assistant. You are Qwen developed by Alibaba. You should think step-by-step."  # noqa: E501
 MAX_TOKENS = 16384
+# We explicitly set the target number of blocks to help tune performance.
+# For materialized datasets, the number of blocks determined by ray data can be small,
+# especially for a multi-stage pipeline like the one here.
+TARGET_NUM_ROWS_PER_BLOCK = 100
+
+# Enable more detailed logging of tasks per actor
+ray.init(runtime_env={"env_vars": {"RAY_ENABLE_RECORD_ACTOR_TASK_LOGGING": 1}})
+
 # 1. Load datasets
-apps_ds = datasets.load_dataset("codeparrot/apps", split="test", trust_remote_code=True)
+apps_ds = datasets.load_dataset(
+    "codeparrot/apps", split="test", trust_remote_code=True
+)  # 10K
 taco_ds_medium = datasets.load_dataset(
-    "BAAI/TACO", split="test", name="MEDIUM", trust_remote_code=True
-)
+    "BAAI/TACO", split="train", name="MEDIUM", trust_remote_code=True
+)  # 3244
+taco_ds_test = datasets.load_dataset(
+    "BAAI/TACO", split="test", name="ALL", trust_remote_code=True
+)  # 1000
 numina_ds = datasets.load_dataset(
     "AI-MO/NuminaMath-CoT", split="train", trust_remote_code=True
 )
 
 # convert all to ray dataset
-apps_ds = ray.data.from_huggingface(apps_ds)
-taco_ds_medium = ray.data.from_huggingface(taco_ds_medium)
+apps_ds = ray.data.from_huggingface(apps_ds).repartition(
+    num_blocks=None, target_num_rows_per_block=TARGET_NUM_ROWS_PER_BLOCK
+)
+taco_ds_medium = ray.data.from_huggingface(
+    taco_ds_medium,
+).repartition(num_blocks=None, target_num_rows_per_block=TARGET_NUM_ROWS_PER_BLOCK)
 taco_ds_medium = taco_ds_medium.map(
     taco_coerce_types, fn_args=(taco_ds_medium.schema(),)
 )
-numina_ds = ray.data.from_huggingface(numina_ds)
+taco_ds_test = ray.data.from_huggingface(
+    taco_ds_test,
+).repartition(num_blocks=None, target_num_rows_per_block=TARGET_NUM_ROWS_PER_BLOCK)
+taco_ds_test = taco_ds_test.map(taco_coerce_types, fn_args=(taco_ds_test.schema(),))
+numina_ds = ray.data.from_huggingface(
+    numina_ds,
+).repartition(num_blocks=None, target_num_rows_per_block=TARGET_NUM_ROWS_PER_BLOCK)
 
 
 # get subsets from numina based on the source column
-numina_ds_amc_aime = numina_ds.filter(lambda x: x["source"] == "amc_aime")
+numina_ds_amc_aime = numina_ds.filter(lambda x: x["source"] == "amc_aime")  # 4070
 numina_ds_olympiads = numina_ds.filter(lambda x: x["source"] == "olympiads").limit(
     20000
-)
-numina_ds_math = numina_ds.filter(lambda x: x["source"] == "math")
+)  # 20k
+numina_ds_math = numina_ds.filter(lambda x: x["source"] == "math")  # 7477
 
 
 if args.as_test:
-    num_samples = 100
+    num_samples = 5000
     apps_ds = apps_ds.limit(num_samples)
     taco_ds_medium = taco_ds_medium.limit(num_samples)
+    taco_ds_test = taco_ds_test.limit(num_samples)
     numina_ds_amc_aime = numina_ds_amc_aime.limit(num_samples)
     numina_ds_olympiads = numina_ds_olympiads.limit(num_samples)
     numina_ds_math = numina_ds_math.limit(num_samples)
@@ -70,6 +97,7 @@ if args.as_test:
 datasets = [
     apps_ds,
     taco_ds_medium,
+    taco_ds_test,
     numina_ds_amc_aime,
     numina_ds_olympiads,
     numina_ds_math,
@@ -79,15 +107,27 @@ datasets = [
 preprocessors = [
     APPSPreprocessor,
     TACOPreprocessor,
+    TACOPreprocessor,
     NUMINAPreprocessor,
     NUMINAPreprocessor,
     NUMINAPreprocessor,
 ]
 
-dataset_names = ["apps", "taco", "numina_amc_aime", "numina_math", "numina_olympiads"]
+dataset_names = [
+    "apps",
+    "taco_train",
+    "taco_test",
+    "numina_amc_aime",
+    "numina_math",
+    "numina_olympiads",
+]
 scorer_configs = [
     dict(
         cls=APPSScorer, fn_constructor_kwargs=dict(response_column="formatted_response")
+    ),
+    dict(
+        cls=TACOScorer,
+        fn_constructor_kwargs=dict(response_column="formatted_response", backend="ray"),
     ),
     dict(
         cls=TACOScorer,
@@ -114,8 +154,6 @@ scorer_configs = [
 ]
 
 for i, ds in enumerate(datasets):
-    if i < 1:
-        continue
     # 1. Preprocess and get model prompts
     preprocess_cls = preprocessors[i]
     datasets[i] = ds.map(
@@ -126,15 +164,16 @@ for i, ds in enumerate(datasets):
     # 2. Get model responses
 
     config = vLLMEngineProcessorConfig(
-        # model="Qwen/QwQ-32B-Preview",
-        model="Qwen/Qwen2-0.5B-Instruct",
+        model="Qwen/QwQ-32B-Preview",
+        # model="Qwen/Qwen2-0.5B-Instruct",
         engine_kwargs=dict(
             enable_prefix_caching=True,
             enable_chunked_prefill=True,
-            max_num_batched_tokens=16384,
+            max_num_batched_tokens=4096,
+            tensor_parallel_size=4,
         ),
         concurrency=2,
-        batch_size=20,
+        batch_size=128,
     )
 
     processor = build_llm_processor(
@@ -145,9 +184,8 @@ for i, ds in enumerate(datasets):
                 {"role": "user", "content": row["user_input"]},
             ],
             sampling_params=dict(
-                temperature=0.3,
+                temperature=0,
                 max_tokens=MAX_TOKENS,
-                detokenize=False,
             ),
         ),
         postprocess=lambda row: dict(
@@ -166,7 +204,7 @@ for i, ds in enumerate(datasets):
         # number of processors to run in parallel
         # Each handles a batch of requests
         concurrency=1,
-        batch_size=64,
+        batch_size=16,
     )
     # define the reformatter
     reformatter = build_llm_processor(
@@ -219,9 +257,9 @@ for i, ds in enumerate(datasets):
     )
 
     # 6. Save datasets
-    dir_name = f"data/sky-t1-preview-{dataset_names[i]}"
-    datasets[i] = datasets[i].materialize()
-    datasets[i].write_json(os.path.abspath(dir_name))
+    dir_name = args.save_dir / f"sky-t1-preview-{dataset_names[i]}"
+    # use absolute path while saving with ray data
+    datasets[i].write_json(str(dir_name.expanduser().absolute()))
 
 
 # 7. Union
