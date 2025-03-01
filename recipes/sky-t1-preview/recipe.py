@@ -36,12 +36,12 @@ args.save_dir = Path(args.save_dir)
 SYSTEM_PROMPT = "You are a helpful and harmless assistant. You are Qwen developed by Alibaba. You should think step-by-step."  # noqa: E501
 MAX_TOKENS = 16384
 # We explicitly set the target number of blocks to help tune performance.
-# For materialized datasets, the number of blocks determined by ray data can be small,
-# especially for a multi-stage pipeline like the one here.
-TARGET_NUM_ROWS_PER_BLOCK = 100
+# For materialized datasets, the number of blocks determined by ray data can be small
+# for a multi-stage pipeline like the one here.
+TARGET_NUM_ROWS_PER_BLOCK = 256
 
 # Enable more detailed logging of tasks per actor
-ray.init(runtime_env={"env_vars": {"RAY_ENABLE_RECORD_ACTOR_TASK_LOGGING": 1}})
+ray.init(runtime_env={"env_vars": {"RAY_ENABLE_RECORD_ACTOR_TASK_LOGGING": "1"}})
 
 # 1. Load datasets
 apps_ds = datasets.load_dataset(
@@ -170,9 +170,9 @@ for i, ds in enumerate(datasets):
             enable_prefix_caching=True,
             enable_chunked_prefill=True,
             max_num_batched_tokens=4096,
-            tensor_parallel_size=4,
+            tensor_parallel_size=2,
         ),
-        concurrency=2,
+        concurrency=4,
         batch_size=128,
     )
 
@@ -205,6 +205,8 @@ for i, ds in enumerate(datasets):
         # Each handles a batch of requests
         concurrency=1,
         batch_size=16,
+        # Throttle QPS to avoid rate limit errors
+        qps=5,
     )
     # define the reformatter
     reformatter = build_llm_processor(
