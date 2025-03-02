@@ -12,7 +12,7 @@ class Scorer(ABC):
         """Scores a single row of data
 
         Args:
-            row: A dictionary containing the data to score.
+            row: A dictionary containing the data to score. (dict)
 
         Returns:
             A dictionary containing the score and any other relevant information.
@@ -37,7 +37,7 @@ class BatchScorer(ABC):
         """Scores a batch of data
 
         Args:
-            batch: A dictionary containing the data to score.
+            rows: list of input dictionaries. (list)
 
         Returns:
             An async iterator of dictionaries containing the score and any other relevant information.
@@ -50,7 +50,7 @@ class BatchScorer(ABC):
         Yields results for each row in the batch as they finish.
 
         Args:
-            batch: A dictionary containing the data to score.
+            batch: A dictionary containing the data to score. (dict)
 
         Returns:
             An async iterator of dictionaries containing the score and any other relevant information.

@@ -38,7 +38,7 @@
 
 We open source the code and scripts we used for data curation, training, and evaluation for Sky-T1-32B-Preview, you can find more details in each directory.
 - [`recipes`](./recipes/): Recipes - data curation steps and training strategies - for building our models `Sky-T1-32B-Flash`, `Sky-T1-32B-Preview` and `Sky-T1-7B` series. 
-- [`skythought/evals`](./skythought/evals/): Our data generation and evaluation library. 
+- [`skythought/evals`](./skythought/evals/): Our data generation and evaluation library. We provide a convenient CLI for evaluation as well as a `Scorer` API for scoring during data curation and training ([example](./examples/scoring.ipynb)). 
 - [`skythought/train`](./skythought/train/): Training scripts for Sky-T1. We use [Llama-Factory](https://github.com/hiyouga/LLaMA-Factory) to perform training. 
 - [`skythought/skythought-rl`](./skythought/skythought-rl/): RL training code for Sky-T1-7B and Sky-T1-mini.
 
@@ -125,7 +125,7 @@ We also evaluate on non-reasoning benchmarks (these are benchmarks for instructi
 
 For more details, refer [here](./skythought/evals/base_instruct_evals.md).
 
-## Fully Open-source: Driving Progress Together
+# Fully Open-source: Driving Progress Together
 We believe that open-source collaboration drives progress, and with Sky-T1-32B-Preview, we are fully committed to empowering the community. We open-source all details (i.e., data, codes, model weights) to enable the community to replicate and improve on our results *easily*:
 
 <table>
