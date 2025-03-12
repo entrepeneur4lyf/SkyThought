@@ -36,14 +36,6 @@ class APPSTaskHandler(TaskHandler):
     def check_correctness(self, problem, generation):
         TIMEOUT = 10
 
-        def _temp_run(problem, generation, debug, result):
-            try:
-                result.append(
-                    apps_run_test(problem=problem, test=generation, debug=debug)
-                )
-            except Exception:
-                pass
-
         manager = Manager()
         result = manager.list()
         p = multiprocessing.Process(
@@ -100,3 +92,10 @@ class APPSTaskHandler(TaskHandler):
         train_data = train_data.to_pandas()
 
         return train_data.iloc[start:end] if end > 0 else train_data.iloc[start:]
+
+
+def _temp_run(problem, generation, debug, result):
+    try:
+        result.append(apps_run_test(problem=problem, test=generation, debug=debug))
+    except Exception:
+        pass
