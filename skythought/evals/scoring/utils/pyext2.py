@@ -108,18 +108,18 @@ else:
         newf.__dict__.update(f.__dict__)
         return newf
     def argspec(f):
-        return inspect.getargspec(f)
+        return inspect.getfullargspec(f)
     eval(compile('def _exec(m,g): exec m in g', '<exec>', 'exec'))
 
 def _gettypes(args):
     return tuple(map(type, args))
 
-oargspec = inspect.getargspec
+oargspec = inspect.getfullargspec
 
 def _argspec(func):
     return __targspec(func, oargspec)
 
-inspect.getargspec = _argspec
+inspect.getfullargspec = _argspec
 
 try:
     import IPython
@@ -253,7 +253,7 @@ class _RuntimeModule(object):
 
            :param docstring: Optional. The module's docstring.
 
-           :param \*\*d: All the keyword args, mapped from name->value.
+           :param **d: All the keyword args, mapped from name->value.
 
            Example: ``RuntimeModule.from_objects('name', 'doc', a=1, b=2)``'''
         module = types.ModuleType(module_name_for_code_eval, docstring)
@@ -387,9 +387,9 @@ def annotate(*args, **kwargs):
 def fannotate(*args, **kwargs):
     '''Set function annotations using decorators.
 
-       :param \*args: The first positional argument is used for the function's return value; all others are discarded.
+       :param *args: The first positional argument is used for the function's return value; all others are discarded.
 
-       :param \**kwargs: This is a mapping of argument names to annotations.
+       :param **kwargs: This is a mapping of argument names to annotations.
 
        Example::
 
