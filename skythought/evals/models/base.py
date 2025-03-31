@@ -28,6 +28,9 @@ class StringInFile(BaseModel):
     def string(self):
         return self._string
 
+    def __str__(self) -> str:
+        return self._string
+
 
 def read_yaml(path: str):
     with open(path, "r") as f:
